@@ -76,12 +76,14 @@
                         <div class="player-avatar-container">
                             <div class="player-avatar red-avatar">
                                 <span class="avatar-icon">👤</span>
+                                <div class="timer-overlay" id="timerRed">30</div>
                             </div>
                             <div class="player-dice" id="diceRed">
                                 <div class="dice-dots-small"></div>
                             </div>
                         </div>
-                        <div class="player-name" id="nameRed">Player 3</div>
+                        <div class="player-name" id="nameRed">Player 2</div>
+                        <div class="player-rolls" id="rollsRed"></div>
                     </div>
 
                     <!-- Top Right Player (Green) -->
@@ -89,12 +91,14 @@
                         <div class="player-avatar-container">
                             <div class="player-avatar green-avatar">
                                 <span class="avatar-icon">👤</span>
+                                <div class="timer-overlay" id="timerGreen">30</div>
                             </div>
                             <div class="player-dice" id="diceGreen">
                                 <div class="dice-dots-small"></div>
                             </div>
                         </div>
-                        <div class="player-name" id="nameGreen">Player 4</div>
+                        <div class="player-name" id="nameGreen">Player 3</div>
+                        <div class="player-rolls" id="rollsGreen"></div>
                     </div>
 
                     <!-- Game Board -->
@@ -102,30 +106,34 @@
                         <canvas id="gameCanvas" width="700" height="700"></canvas>
                     </div>
 
-                    <!-- Bottom Left Player (Yellow - You) -->
-                    <div class="player-info player-bottom-left" data-color="yellow">
-                        <div class="player-avatar-container">
-                            <div class="player-avatar yellow-avatar">
-                                <span class="avatar-icon">👤</span>
-                            </div>
-                            <div class="player-dice" id="diceYellow">
-                                <div class="dice-dots-small"></div>
-                            </div>
-                        </div>
-                        <div class="player-name" id="nameYellow">You</div>
-                    </div>
-
-                    <!-- Bottom Right Player (Blue) -->
-                    <div class="player-info player-bottom-right" data-color="blue">
+                    <!-- Bottom Left Player (Blue - You) -->
+                    <div class="player-info player-bottom-left" data-color="blue">
                         <div class="player-avatar-container">
                             <div class="player-avatar blue-avatar">
                                 <span class="avatar-icon">👤</span>
+                                <div class="timer-overlay" id="timerBlue">30</div>
                             </div>
                             <div class="player-dice" id="diceBlue">
                                 <div class="dice-dots-small"></div>
                             </div>
                         </div>
-                        <div class="player-name" id="nameBlue">Player 2</div>
+                        <div class="player-name" id="nameBlue">You</div>
+                        <div class="player-rolls" id="rollsBlue"></div>
+                    </div>
+
+                    <!-- Bottom Right Player (Yellow) -->
+                    <div class="player-info player-bottom-right" data-color="yellow">
+                        <div class="player-avatar-container">
+                            <div class="player-avatar yellow-avatar">
+                                <span class="avatar-icon">👤</span>
+                                <div class="timer-overlay" id="timerYellow">30</div>
+                            </div>
+                            <div class="player-dice" id="diceYellow">
+                                <div class="dice-dots-small"></div>
+                            </div>
+                        </div>
+                        <div class="player-name" id="nameYellow">Player 4</div>
+                        <div class="player-rolls" id="rollsYellow"></div>
                     </div>
 
                     <!-- Exit Button -->
@@ -133,6 +141,10 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div id="moveChoicePopup" class="move-choice-popup">
+        <div class="move-choice-buttons-inline" id="moveChoiceButtons"></div>
     </div>
 
     <script src="game.js"></script>

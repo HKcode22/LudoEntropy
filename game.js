@@ -12,6 +12,13 @@ class LudoGame {
         this.selectedPiece = null;
         this.canMove = false;
         this.movablePieces = [];
+        this.consecutiveSixes = 0;
+        this.currentRolls = [];
+        this.hasRolled = false;
+        this.selectedRoll = null;
+        this.pieceCaptured = false;
+        this.turnTimer = null;
+        this.turnTimeRemaining = 30;
         
         this.colors = ['red', 'green', 'yellow', 'blue'];
         this.colorMap = {
@@ -73,60 +80,62 @@ class LudoGame {
         
         this.homePositions = {
             red: [
-                { x: 1.5, y: 1.5 },
-                { x: 4.5, y: 1.5 },
-                { x: 1.5, y: 4.5 },
-                { x: 4.5, y: 4.5 }
+                { x: 2.25, y: 2.25 },
+                { x: 3.75, y: 2.25 },
+                { x: 2.25, y: 3.75 },
+                { x: 3.75, y: 3.75 }
             ],
             green: [
-                { x: 9.5, y: 1.5 },
-                { x: 12.5, y: 1.5 },
-                { x: 9.5, y: 4.5 },
-                { x: 12.5, y: 4.5 }
+                { x: 10.25, y: 2.25 },
+                { x: 11.75, y: 2.25 },
+                { x: 10.25, y: 3.75 },
+                { x: 11.75, y: 3.75 }
             ],
             yellow: [
-                { x: 9.5, y: 9.5 },
-                { x: 12.5, y: 9.5 },
-                { x: 9.5, y: 12.5 },
-                { x: 12.5, y: 12.5 }
+                { x: 10.25, y: 10.25 },
+                { x: 11.75, y: 10.25 },
+                { x: 10.25, y: 11.75 },
+                { x: 11.75, y: 11.75 }
             ],
             blue: [
-                { x: 1.5, y: 9.5 },
-                { x: 4.5, y: 9.5 },
-                { x: 1.5, y: 12.5 },
-                { x: 4.5, y: 12.5 }
+                { x: 2.25, y: 10.25 },
+                { x: 3.75, y: 10.25 },
+                { x: 2.25, y: 11.75 },
+                { x: 3.75, y: 11.75 }
             ]
         };
     }
 
     generatePath(color) {
         const mainPath = [
-            { x: 6, y: 1 }, { x: 6, y: 2 }, { x: 6, y: 3 }, { x: 6, y: 4 }, { x: 6, y: 5 },
-            { x: 5, y: 6 }, { x: 4, y: 6 }, { x: 3, y: 6 }, { x: 2, y: 6 }, { x: 1, y: 6 }, { x: 0, y: 6 },
-            { x: 0, y: 7 }, { x: 0, y: 8 },
-            { x: 1, y: 8 }, { x: 2, y: 8 }, { x: 3, y: 8 }, { x: 4, y: 8 }, { x: 5, y: 8 },
-            { x: 6, y: 9 }, { x: 6, y: 10 }, { x: 6, y: 11 }, { x: 6, y: 12 }, { x: 6, y: 13 }, { x: 6, y: 14 },
-            { x: 7, y: 14 }, { x: 8, y: 14 },
-            { x: 8, y: 13 }, { x: 8, y: 12 }, { x: 8, y: 11 }, { x: 8, y: 10 }, { x: 8, y: 9 },
-            { x: 9, y: 8 }, { x: 10, y: 8 }, { x: 11, y: 8 }, { x: 12, y: 8 }, { x: 13, y: 8 }, { x: 14, y: 8 },
-            { x: 14, y: 7 }, { x: 14, y: 6 },
-            { x: 13, y: 6 }, { x: 12, y: 6 }, { x: 11, y: 6 }, { x: 10, y: 6 }, { x: 9, y: 6 },
-            { x: 8, y: 5 }, { x: 8, y: 4 }, { x: 8, y: 3 }, { x: 8, y: 2 }, { x: 8, y: 1 }, { x: 8, y: 0 },
-            { x: 7, y: 0 }, { x: 6, y: 0 }
+            { x: 0, y: 7 },
+            { x: 0, y: 6 },
+            { x: 1, y: 6 }, { x: 2, y: 6 }, { x: 3, y: 6 }, { x: 4, y: 6 }, { x: 5, y: 6 },
+            { x: 6, y: 5 }, { x: 6, y: 4 }, { x: 6, y: 3 }, { x: 6, y: 2 }, { x: 6, y: 1 },
+            { x: 6, y: 0 }, { x: 7, y: 0 }, { x: 8, y: 0 },
+            { x: 8, y: 1 }, { x: 8, y: 2 }, { x: 8, y: 3 }, { x: 8, y: 4 }, { x: 8, y: 5 },
+            { x: 9, y: 6 }, { x: 10, y: 6 }, { x: 11, y: 6 }, { x: 12, y: 6 }, { x: 13, y: 6 },
+            { x: 14, y: 6 }, { x: 14, y: 7 },
+            { x: 14, y: 8 },
+            { x: 13, y: 8 }, { x: 12, y: 8 }, { x: 11, y: 8 }, { x: 10, y: 8 }, { x: 9, y: 8 },
+            { x: 8, y: 9 }, { x: 8, y: 10 }, { x: 8, y: 11 }, { x: 8, y: 12 }, { x: 8, y: 13 },
+            { x: 8, y: 14 }, { x: 7, y: 14 }, { x: 6, y: 14 },
+            { x: 6, y: 13 }, { x: 6, y: 12 }, { x: 6, y: 11 }, { x: 6, y: 10 }, { x: 6, y: 9 },
+            { x: 5, y: 8 }, { x: 4, y: 8 }, { x: 3, y: 8 }, { x: 2, y: 8 }, { x: 1, y: 8 }, { x: 0, y: 8 }
         ];
 
         const homePaths = {
-            red: [{ x: 7, y: 1 }, { x: 7, y: 2 }, { x: 7, y: 3 }, { x: 7, y: 4 }, { x: 7, y: 5 }, { x: 7, y: 6 }],
-            green: [{ x: 13, y: 7 }, { x: 12, y: 7 }, { x: 11, y: 7 }, { x: 10, y: 7 }, { x: 9, y: 7 }, { x: 8, y: 7 }],
-            yellow: [{ x: 7, y: 13 }, { x: 7, y: 12 }, { x: 7, y: 11 }, { x: 7, y: 10 }, { x: 7, y: 9 }, { x: 7, y: 8 }],
-            blue: [{ x: 1, y: 7 }, { x: 2, y: 7 }, { x: 3, y: 7 }, { x: 4, y: 7 }, { x: 5, y: 7 }, { x: 6, y: 7 }]
+            red: [{ x: 1, y: 7 }, { x: 2, y: 7 }, { x: 3, y: 7 }, { x: 4, y: 7 }, { x: 5, y: 7 }],
+            green: [{ x: 7, y: 1 }, { x: 7, y: 2 }, { x: 7, y: 3 }, { x: 7, y: 4 }, { x: 7, y: 5 }],
+            yellow: [{ x: 13, y: 7 }, { x: 12, y: 7 }, { x: 11, y: 7 }, { x: 10, y: 7 }, { x: 9, y: 7 }],
+            blue: [{ x: 7, y: 13 }, { x: 7, y: 12 }, { x: 7, y: 11 }, { x: 7, y: 10 }, { x: 7, y: 9 }]
         };
 
         const startPositions = {
             red: 0,
-            green: 13,
+            green: 15,
             yellow: 26,
-            blue: 39
+            blue: 40
         };
 
         const start = startPositions[color];
@@ -197,12 +206,12 @@ class LudoGame {
     quickPlay() {
         this.isHost = true;
         this.roomCode = this.generateRoomCode();
-        this.myColor = 'yellow';
+        this.myColor = 'blue';
         this.players = [
-            { id: 'player1', color: 'yellow', name: 'You' },
-            { id: 'player2', color: 'blue', name: 'Player 2' },
-            { id: 'player3', color: 'red', name: 'Player 3' },
-            { id: 'player4', color: 'green', name: 'Player 4' }
+            { id: 'player1', color: 'blue', name: 'You' },
+            { id: 'player2', color: 'red', name: 'Player 2' },
+            { id: 'player3', color: 'green', name: 'Player 3' },
+            { id: 'player4', color: 'yellow', name: 'Player 4' }
         ];
         this.mockPlayers = [...this.players];
         
@@ -304,8 +313,8 @@ class LudoGame {
         
         this.drawHomeAreas();
         this.drawPath();
-        this.drawStartingPositions();
         this.drawSafeSpots();
+        this.drawStartingPositions();
         this.drawCenterTriangle();
         this.drawPieces();
     }
@@ -351,7 +360,7 @@ class LudoGame {
                 this.ctx.arc(
                     pos.x * this.cellSize,
                     pos.y * this.cellSize,
-                    this.cellSize * 0.65,
+                    this.cellSize * 0.55,
                     0,
                     Math.PI * 2
                 );
@@ -365,7 +374,7 @@ class LudoGame {
                 this.ctx.arc(
                     pos.x * this.cellSize,
                     pos.y * this.cellSize,
-                    this.cellSize * 0.35,
+                    this.cellSize * 0.3,
                     0,
                     Math.PI * 2
                 );
@@ -376,7 +385,7 @@ class LudoGame {
     }
 
     drawPath() {
-        const allPaths = [...this.paths.red.slice(0, 52)];
+        const allPaths = [...this.paths.red.slice(0, 50)];
         
         allPaths.forEach((cell, index) => {
             this.ctx.fillStyle = '#FFFFFF';
@@ -398,7 +407,7 @@ class LudoGame {
         });
         
         Object.entries(this.paths).forEach(([color, path]) => {
-            const homePath = path.slice(52);
+            const homePath = path.slice(50);
             homePath.forEach((cell, index) => {
                 this.ctx.fillStyle = this.colorMap[color];
                 this.ctx.fillRect(
@@ -422,66 +431,100 @@ class LudoGame {
 
     drawStartingPositions() {
         const startPositions = [
-            { x: 6, y: 1, color: 'red' },
-            { x: 13, y: 6, color: 'green' },
-            { x: 8, y: 13, color: 'yellow' },
-            { x: 1, y: 8, color: 'blue' }
+            { x: 0, y: 7, color: 'red', hasStar: true },
+            { x: 8, y: 1, color: 'green', hasStar: true },
+            { x: 14, y: 7, color: 'yellow', hasStar: true },
+            { x: 6, y: 13, color: 'blue', hasStar: true }
         ];
 
         startPositions.forEach(pos => {
-            this.drawArrow(
-                (pos.x + 0.5) * this.cellSize,
-                (pos.y + 0.5) * this.cellSize,
-                this.colorMap[pos.color]
+            this.ctx.fillStyle = this.colorMap[pos.color];
+            this.ctx.fillRect(
+                pos.x * this.cellSize,
+                pos.y * this.cellSize,
+                this.cellSize,
+                this.cellSize
             );
+            
+            if (pos.hasStar) {
+                this.drawStar(
+                    (pos.x + 0.5) * this.cellSize,
+                    (pos.y + 0.5) * this.cellSize,
+                    this.cellSize * 0.3,
+                    '#FFFFFF'
+                );
+            }
         });
     }
 
-    drawArrow(x, y, color) {
-        const size = this.cellSize * 0.4;
+    drawArrow(x, y, color, direction) {
+        const size = this.cellSize * 0.3;
         this.ctx.fillStyle = color;
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        
+        switch(direction) {
+            case 'down':
+                break;
+            case 'up':
+                this.ctx.rotate(Math.PI);
+                break;
+            case 'left':
+                this.ctx.rotate(-Math.PI / 2);
+                break;
+            case 'right':
+                this.ctx.rotate(Math.PI / 2);
+                break;
+        }
+        
         this.ctx.beginPath();
-        this.ctx.moveTo(x, y - size);
-        this.ctx.lineTo(x - size * 0.6, y + size * 0.3);
-        this.ctx.lineTo(x - size * 0.3, y + size * 0.3);
-        this.ctx.lineTo(x - size * 0.3, y + size);
-        this.ctx.lineTo(x + size * 0.3, y + size);
-        this.ctx.lineTo(x + size * 0.3, y + size * 0.3);
-        this.ctx.lineTo(x + size * 0.6, y + size * 0.3);
+        this.ctx.moveTo(0, -size * 0.5);
+        this.ctx.lineTo(-size * 0.5, size * 0.3);
+        this.ctx.lineTo(-size * 0.2, size * 0.3);
+        this.ctx.lineTo(-size * 0.2, size * 0.7);
+        this.ctx.lineTo(size * 0.2, size * 0.7);
+        this.ctx.lineTo(size * 0.2, size * 0.3);
+        this.ctx.lineTo(size * 0.5, size * 0.3);
         this.ctx.closePath();
         this.ctx.fill();
+        
+        this.ctx.restore();
     }
 
     drawSafeSpots() {
         const safeSpots = [
-            { x: 6, y: 2, color: 'red' },
-            { x: 2, y: 6, color: 'red' },
-            { x: 12, y: 6, color: 'green' },
-            { x: 8, y: 2, color: 'green' },
-            { x: 8, y: 12, color: 'yellow' },
-            { x: 12, y: 8, color: 'yellow' },
-            { x: 2, y: 8, color: 'blue' },
-            { x: 6, y: 12, color: 'blue' }
+            { x: 2, y: 8 },
+            { x: 6, y: 2 },
+            { x: 12, y: 6 },
+            { x: 8, y: 12 }
         ];
 
         safeSpots.forEach(spot => {
+            this.ctx.fillStyle = '#9E9E9E';
+            this.ctx.fillRect(
+                spot.x * this.cellSize,
+                spot.y * this.cellSize,
+                this.cellSize,
+                this.cellSize
+            );
+            
             this.drawStar(
                 (spot.x + 0.5) * this.cellSize,
                 (spot.y + 0.5) * this.cellSize,
-                this.cellSize * 0.35,
-                spot.color
+                this.cellSize * 0.3,
+                '#FFFFFF'
             );
         });
     }
 
-    drawStar(cx, cy, radius, color) {
-        const spikes = 4;
+    drawStar(cx, cy, radius, fillColor = '#FFFFFF') {
+        const spikes = 5;
         const outerRadius = radius;
         const innerRadius = radius * 0.4;
         
         this.ctx.save();
         this.ctx.translate(cx, cy);
-        this.ctx.rotate(Math.PI / 4);
+        this.ctx.rotate(-Math.PI / 2);
         
         this.ctx.beginPath();
         for (let i = 0; i < spikes * 2; i++) {
@@ -498,76 +541,73 @@ class LudoGame {
         }
         this.ctx.closePath();
         
-        this.ctx.fillStyle = this.colorMap[color];
+        this.ctx.fillStyle = fillColor;
         this.ctx.fill();
-        this.ctx.strokeStyle = '#FFFFFF';
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
         
         this.ctx.restore();
     }
 
     drawCenterTriangle() {
-        const center = 7.5 * this.cellSize;
-        const size = this.cellSize * 1.2;
+        const cx = 7.5 * this.cellSize;
+        const cy = 7.5 * this.cellSize;
+        const triSize = this.cellSize * 0.6;
         
-        this.ctx.fillStyle = '#E74C3C';
+        this.ctx.fillStyle = this.colorMap.blue;
         this.ctx.beginPath();
-        this.ctx.moveTo(center, center - size);
-        this.ctx.lineTo(center - size * 0.866, center + size * 0.5);
-        this.ctx.lineTo(center + size * 0.866, center + size * 0.5);
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx - triSize, cy - triSize);
+        this.ctx.lineTo(cx + triSize, cy - triSize);
         this.ctx.closePath();
         this.ctx.fill();
         
-        this.ctx.fillStyle = '#27AE60';
+        this.ctx.fillStyle = this.colorMap.red;
         this.ctx.beginPath();
-        this.ctx.moveTo(center + size * 0.866, center + size * 0.5);
-        this.ctx.lineTo(center, center - size);
-        this.ctx.lineTo(center, center + size);
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx + triSize, cy - triSize);
+        this.ctx.lineTo(cx + triSize, cy + triSize);
         this.ctx.closePath();
         this.ctx.fill();
         
-        this.ctx.fillStyle = '#F1C40F';
+        this.ctx.fillStyle = this.colorMap.green;
         this.ctx.beginPath();
-        this.ctx.moveTo(center, center + size);
-        this.ctx.lineTo(center + size * 0.866, center + size * 0.5);
-        this.ctx.lineTo(center - size * 0.866, center + size * 0.5);
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx + triSize, cy + triSize);
+        this.ctx.lineTo(cx - triSize, cy + triSize);
         this.ctx.closePath();
         this.ctx.fill();
         
-        this.ctx.fillStyle = '#3498DB';
+        this.ctx.fillStyle = this.colorMap.yellow;
         this.ctx.beginPath();
-        this.ctx.moveTo(center - size * 0.866, center + size * 0.5);
-        this.ctx.lineTo(center, center + size);
-        this.ctx.lineTo(center, center - size);
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx - triSize, cy + triSize);
+        this.ctx.lineTo(cx - triSize, cy - triSize);
         this.ctx.closePath();
         this.ctx.fill();
-        
-        this.ctx.strokeStyle = '#FFFFFF';
-        this.ctx.lineWidth = 4;
-        this.ctx.beginPath();
-        this.ctx.moveTo(center, center - size);
-        this.ctx.lineTo(center - size * 0.866, center + size * 0.5);
-        this.ctx.lineTo(center + size * 0.866, center + size * 0.5);
-        this.ctx.closePath();
-        this.ctx.stroke();
-        
-        this.ctx.beginPath();
-        this.ctx.moveTo(center, center - size);
-        this.ctx.lineTo(center, center + size);
-        this.ctx.stroke();
-        this.ctx.beginPath();
-        this.ctx.moveTo(center - size * 0.866, center + size * 0.5);
-        this.ctx.lineTo(center + size * 0.866, center + size * 0.5);
-        this.ctx.stroke();
+    }
+
+    getPiecesAtPosition(targetColor, targetPosition) {
+        const piecesHere = [];
+        Object.entries(this.pieces).forEach(([color, pieces]) => {
+            pieces.forEach((piece, index) => {
+                if (!piece.inHome && !piece.inGoal) {
+                    const globalPos = this.getGlobalPosition(color, piece.position);
+                    const targetGlobalPos = this.getGlobalPosition(targetColor, targetPosition);
+                    if (globalPos === targetGlobalPos && piece.position < 50) {
+                        piecesHere.push({ color, index, piece });
+                    }
+                }
+            });
+        });
+        return piecesHere;
     }
 
     drawPieces() {
         const currentColor = this.players[this.currentPlayerIndex]?.color;
+        const drawnPositions = new Map();
         
         Object.entries(this.pieces).forEach(([color, pieces]) => {
             pieces.forEach((piece, index) => {
-                let x, y;
+                let x, y, stackOffset = 0;
                 
                 if (piece.inHome) {
                     const homePos = this.homePositions[color][index];
@@ -584,8 +624,17 @@ class LudoGame {
                     y = 7.5 * this.cellSize + offsets[index].dy * this.cellSize;
                 } else {
                     const pathPos = this.paths[color][piece.position];
+                    const posKey = `${pathPos.x},${pathPos.y}`;
+                    
+                    if (drawnPositions.has(posKey)) {
+                        stackOffset = drawnPositions.get(posKey) * 5;
+                        drawnPositions.set(posKey, drawnPositions.get(posKey) + 1);
+                    } else {
+                        drawnPositions.set(posKey, 1);
+                    }
+                    
                     x = (pathPos.x + 0.5) * this.cellSize;
-                    y = (pathPos.y + 0.5) * this.cellSize;
+                    y = (pathPos.y + 0.5) * this.cellSize - stackOffset;
                 }
                 
                 piece.coords = { x, y };
@@ -643,17 +692,7 @@ class LudoGame {
         const pieces = this.pieces[color];
         
         pieces.forEach((piece, index) => {
-            let canMove = false;
-            if (piece.inHome && this.diceValue === 6) {
-                canMove = true;
-            } else if (!piece.inHome && !piece.inGoal) {
-                const newPos = piece.position + this.diceValue;
-                if (newPos <= 57) {
-                    canMove = true;
-                }
-            }
-            
-            if (canMove) {
+            if (this.canPieceUseAnyRoll(piece, color)) {
                 this.movablePieces.push(index);
             }
         });
@@ -688,96 +727,228 @@ class LudoGame {
 
     selectAndMovePiece(color, pieceIndex) {
         const piece = this.pieces[color][pieceIndex];
+        const validRolls = this.getValidRollsForPiece(piece, color);
         
-        if (piece.inHome && this.diceValue === 6) {
-            piece.inHome = false;
-            piece.position = 0;
-            this.canMove = false;
-            this.movablePieces = [];
-            this.selectedPiece = null;
-            this.drawBoard();
-            
-            setTimeout(() => {
-                this.updateCurrentPlayerDisplay();
-            }, 500);
-        } else if (!piece.inHome && !piece.inGoal) {
-            const newPosition = piece.position + this.diceValue;
-            const maxPosition = 57;
-            
-            if (newPosition === maxPosition) {
-                piece.inGoal = true;
-                piece.position = maxPosition;
-                
-                this.canMove = false;
-                this.movablePieces = [];
-                this.selectedPiece = null;
-                this.drawBoard();
-                
-                if (this.checkWin(color)) {
-                    setTimeout(() => {
-                        alert(`${this.players[this.currentPlayerIndex].name} wins!`);
-                        this.exitGame();
-                    }, 500);
-                } else if (this.diceValue === 6) {
-                    setTimeout(() => {
-                        this.updateCurrentPlayerDisplay();
-                    }, 500);
-                } else {
-                    setTimeout(() => {
-                        this.nextPlayer();
-                    }, 500);
-                }
-            } else if (newPosition < maxPosition) {
-                piece.position = newPosition;
-                
-                this.checkCapture(color, piece);
-                
-                this.canMove = false;
-                this.movablePieces = [];
-                this.selectedPiece = null;
-                this.drawBoard();
-                
-                if (this.diceValue === 6) {
-                    setTimeout(() => {
-                        this.updateCurrentPlayerDisplay();
-                    }, 500);
-                } else if (!this.checkWin(color)) {
-                    setTimeout(() => {
-                        this.nextPlayer();
-                    }, 500);
-                }
-            }
+        if (validRolls.length === 0) return;
+        
+        if (validRolls.length === 1) {
+            this.movePieceWithRoll(color, pieceIndex, validRolls[0]);
+        } else {
+            this.showMoveChoice(color, pieceIndex, validRolls);
         }
     }
 
-    checkCapture(color, piece) {
-        if (piece.position >= 52) return;
-        
-        const safePositions = [0, 8, 13, 21, 26, 34, 39, 47];
-        if (safePositions.includes(piece.position)) return;
-        
-        Object.entries(this.pieces).forEach(([otherColor, otherPieces]) => {
-            if (otherColor === color) return;
-            
-            otherPieces.forEach(otherPiece => {
-                if (!otherPiece.inHome && !otherPiece.inGoal) {
-                    const myGlobalPos = this.getGlobalPosition(color, piece.position);
-                    const otherGlobalPos = this.getGlobalPosition(otherColor, otherPiece.position);
-                    
-                    if (myGlobalPos === otherGlobalPos && otherPiece.position < 52) {
-                        otherPiece.inHome = true;
-                        otherPiece.position = -1;
-                    }
-                }
-            });
+    getValidRollsForPiece(piece, color) {
+        return this.currentRolls.filter(roll => {
+            if (piece.inHome) return roll === 6;
+            if (piece.inGoal) return false;
+            const newPos = piece.position + roll;
+            return newPos <= 55;
         });
     }
 
-    getGlobalPosition(color, position) {
-        if (position >= 52) return -1;
+    showMoveChoice(color, pieceIndex, validRolls) {
+        const popup = document.getElementById('moveChoicePopup');
+        const buttonsContainer = document.getElementById('moveChoiceButtons');
+        const piece = this.pieces[color][pieceIndex];
         
-        const startOffsets = { red: 0, green: 13, yellow: 26, blue: 39 };
-        return (position + startOffsets[color]) % 52;
+        if (!piece.coords) return;
+        
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const popupX = canvasRect.left + piece.coords.x - 60;
+        const popupY = canvasRect.top + piece.coords.y - 80;
+        
+        popup.style.left = `${popupX}px`;
+        popup.style.top = `${popupY}px`;
+        
+        buttonsContainer.innerHTML = '';
+        validRolls.forEach(roll => {
+            const btn = document.createElement('button');
+            btn.className = 'move-choice-btn';
+            btn.textContent = roll;
+            btn.onclick = () => {
+                popup.classList.remove('active');
+                this.movePieceWithRoll(color, pieceIndex, roll);
+            };
+            buttonsContainer.appendChild(btn);
+        });
+        
+        popup.classList.add('active');
+    }
+
+    movePieceWithRoll(color, pieceIndex, roll) {
+        const piece = this.pieces[color][pieceIndex];
+        this.pieceCaptured = false;
+        
+        const rollIndex = this.currentRolls.indexOf(roll);
+        if (rollIndex > -1) {
+            this.currentRolls.splice(rollIndex, 1);
+        }
+        this.updateRollsDisplay(color);
+        
+        const oldPosition = piece.position;
+        const wasInHome = piece.inHome;
+        
+        if (piece.inHome && roll === 6) {
+            piece.inHome = false;
+            piece.position = 0;
+            this.animatePieceMovement(color, pieceIndex, wasInHome, oldPosition, 0, () => {
+                this.afterPieceMove(color);
+            });
+        } else if (!piece.inHome && !piece.inGoal) {
+            const newPosition = piece.position + roll;
+            const maxPosition = 55;
+            
+            if (newPosition === maxPosition) {
+                piece.inGoal = true;
+                this.animatePieceMovement(color, pieceIndex, false, oldPosition, maxPosition, () => {
+                    piece.position = maxPosition;
+                    this.afterPieceMove(color);
+                });
+            } else if (newPosition < maxPosition) {
+                this.animatePieceMovement(color, pieceIndex, false, oldPosition, newPosition, () => {
+                    piece.position = newPosition;
+                    this.checkCapture(color, piece);
+                    this.afterPieceMove(color);
+                });
+            } else {
+                this.afterPieceMove(color);
+            }
+        } else {
+            this.afterPieceMove(color);
+        }
+    }
+    
+    animatePieceMovement(color, pieceIndex, wasInHome, startPos, endPos, callback) {
+        const piece = this.pieces[color][pieceIndex];
+        const steps = Math.abs(endPos - startPos);
+        
+        if (steps === 0 || wasInHome) {
+            this.drawBoard();
+            if (callback) callback();
+            return;
+        }
+        
+        let currentStep = 0;
+        
+        const animationInterval = setInterval(() => {
+            if (currentStep < steps) {
+                currentStep++;
+                piece.position = startPos + currentStep;
+                this.drawBoard();
+            } else {
+                clearInterval(animationInterval);
+                piece.position = endPos;
+                this.drawBoard();
+                if (callback) callback();
+            }
+        }, 100);
+    }
+    
+    afterPieceMove(color) {
+        this.canMove = false;
+        this.movablePieces = [];
+        this.selectedPiece = null;
+        this.drawBoard();
+        
+        if (this.checkWin(color)) {
+            setTimeout(() => {
+                alert(`${this.players[this.currentPlayerIndex].name} wins!`);
+                this.exitGame();
+            }, 500);
+            return;
+        }
+        
+        if (this.pieceCaptured) {
+            this.hasRolled = false;
+            this.pieceCaptured = false;
+            setTimeout(() => {
+                this.updateCurrentPlayerDisplay();
+            }, 500);
+            return;
+        }
+        
+        if (this.currentRolls.length > 0) {
+            const pieces = this.pieces[color];
+            const canMove = pieces.some(p => this.canPieceUseAnyRoll(p, color));
+            
+            if (canMove) {
+                this.canMove = true;
+                this.highlightMovablePieces(color);
+            } else {
+                setTimeout(() => {
+                    this.endTurn();
+                }, 500);
+            }
+        } else {
+            setTimeout(() => {
+                this.endTurn();
+            }, 500);
+        }
+    }
+
+    endTurn() {
+        this.stopTurnTimer();
+        this.currentRolls = [];
+        this.hasRolled = false;
+        this.consecutiveSixes = 0;
+        this.pieceCaptured = false;
+        const currentColor = this.players[this.currentPlayerIndex]?.color;
+        if (currentColor) {
+            this.updateRollsDisplay(currentColor);
+        }
+        this.nextPlayer();
+    }
+
+    checkCapture(color, piece) {
+        if (piece.position >= 50) return;
+        
+        if (piece.position === 0) return;
+        
+        const pathPos = this.paths[color][piece.position];
+        const safeSpotCoords = [
+            { x: 2, y: 8 }, { x: 6, y: 2 }, { x: 12, y: 6 }, { x: 8, y: 12 }
+        ];
+        const startingSpotCoords = [
+            { x: 0, y: 7 }, { x: 8, y: 1 }, { x: 14, y: 7 }, { x: 6, y: 13 }
+        ];
+        
+        const isSafeSpot = safeSpotCoords.some(s => s.x === pathPos.x && s.y === pathPos.y) ||
+                          startingSpotCoords.some(s => s.x === pathPos.x && s.y === pathPos.y);
+        
+        if (isSafeSpot) return;
+        
+        let captured = false;
+        Object.entries(this.pieces).forEach(([otherColor, otherPieces]) => {
+            if (otherColor === color) return;
+            
+            const otherPiecesAtSameSpot = otherPieces.filter(op => {
+                if (op.inHome || op.inGoal || op.position >= 51) return false;
+                const otherPathPos = this.paths[otherColor][op.position];
+                return pathPos.x === otherPathPos.x && pathPos.y === otherPathPos.y;
+            });
+            
+            if (otherPiecesAtSameSpot.length > 1) {
+                return;
+            }
+            
+            otherPiecesAtSameSpot.forEach(otherPiece => {
+                otherPiece.inHome = true;
+                otherPiece.position = -1;
+                captured = true;
+            });
+        });
+        
+        if (captured) {
+            this.pieceCaptured = true;
+        }
+    }
+
+    getGlobalPosition(color, position) {
+        if (position >= 50) return -1;
+        
+        const startOffsets = { red: 0, green: 15, yellow: 26, blue: 40 };
+        return (position + startOffsets[color]) % 50;
     }
 
     checkWin(color) {
@@ -788,6 +959,10 @@ class LudoGame {
     rollDice() {
         if (!this.players[this.currentPlayerIndex]) return;
         if (this.players[this.currentPlayerIndex].color !== this.myColor) return;
+        
+        if (this.hasRolled && this.diceValue !== 6) return;
+        
+        if (this.currentRolls.length >= 3) return;
         
         const currentColor = this.players[this.currentPlayerIndex].color;
         const diceId = `dice${currentColor.charAt(0).toUpperCase() + currentColor.slice(1)}`;
@@ -801,26 +976,63 @@ class LudoGame {
             this.updateDiceDisplay(this.diceValue, currentColor);
             dice.classList.remove('rolling');
             
-            const pieces = this.pieces[currentColor];
+            this.currentRolls.push(this.diceValue);
+            this.updateRollsDisplay(currentColor);
             
+            if (this.diceValue === 6) {
+                this.consecutiveSixes++;
+                
+                if (this.consecutiveSixes === 3) {
+                    alert('Three 6s in a row! Your turn is void.');
+                    this.currentRolls = [];
+                    this.consecutiveSixes = 0;
+                    this.hasRolled = false;
+                    this.updateRollsDisplay(currentColor);
+                    setTimeout(() => {
+                        this.nextPlayer();
+                    }, 1000);
+                    return;
+                }
+                
+                this.hasRolled = false;
+            } else {
+                this.hasRolled = true;
+                this.consecutiveSixes = 0;
+            }
+            
+            const pieces = this.pieces[currentColor];
             const canMove = pieces.some(piece => {
-                if (piece.inHome) return this.diceValue === 6;
-                if (piece.inGoal) return false;
-                const newPos = piece.position + this.diceValue;
-                return newPos <= 57;
+                return this.canPieceUseAnyRoll(piece, currentColor);
             });
             
             if (canMove) {
                 this.canMove = true;
                 this.highlightMovablePieces(currentColor);
-            } else {
+            } else if (!this.currentRolls.includes(6) || this.hasRolled) {
                 setTimeout(() => {
-                    if (this.diceValue !== 6) {
-                        this.nextPlayer();
-                    }
+                    this.endTurn();
                 }, 1000);
             }
         }, 500);
+    }
+
+    canPieceUseAnyRoll(piece, color) {
+        return this.currentRolls.some(roll => {
+            if (piece.inHome) return roll === 6;
+            if (piece.inGoal) return false;
+            const newPos = piece.position + roll;
+            return newPos <= 55;
+        });
+    }
+
+    updateRollsDisplay(color) {
+        const rollsId = `rolls${color.charAt(0).toUpperCase() + color.slice(1)}`;
+        const rollsElement = document.getElementById(rollsId);
+        if (rollsElement) {
+            rollsElement.innerHTML = this.currentRolls.map(roll => 
+                `<span class="roll-badge">${roll}</span>`
+            ).join('');
+        }
     }
 
     nextPlayer() {
@@ -828,6 +1040,10 @@ class LudoGame {
         this.canMove = false;
         this.movablePieces = [];
         this.selectedPiece = null;
+        this.consecutiveSixes = 0;
+        this.currentRolls = [];
+        this.hasRolled = false;
+        this.pieceCaptured = false;
         this.updateCurrentPlayerDisplay();
         this.drawBoard();
         
@@ -872,6 +1088,16 @@ class LudoGame {
         if (!this.players[this.currentPlayerIndex]) return;
         if (this.players[this.currentPlayerIndex].color === this.myColor) return;
         
+        if (this.hasRolled && this.diceValue !== 6) {
+            this.simulateAIMove();
+            return;
+        }
+        
+        if (this.currentRolls.length >= 3) {
+            this.simulateAIMove();
+            return;
+        }
+        
         const currentColor = this.players[this.currentPlayerIndex].color;
         const diceId = `dice${currentColor.charAt(0).toUpperCase() + currentColor.slice(1)}`;
         const dice = document.getElementById(diceId);
@@ -888,29 +1114,55 @@ class LudoGame {
             this.updateDiceDisplay(this.diceValue, currentColor);
             dice.classList.remove('rolling');
             
-            setTimeout(() => {
-                const pieces = this.pieces[currentColor];
+            this.currentRolls.push(this.diceValue);
+            this.updateRollsDisplay(currentColor);
+            
+            if (this.diceValue === 6) {
+                this.consecutiveSixes++;
                 
-                const movablePieces = pieces.filter((piece, index) => {
-                    if (piece.inHome) return this.diceValue === 6;
-                    if (piece.inGoal) return false;
-                    const newPos = piece.position + this.diceValue;
-                    return newPos <= 57;
-                });
-                
-                if (movablePieces.length > 0) {
-                    const randomPiece = movablePieces[Math.floor(Math.random() * movablePieces.length)];
-                    const pieceIndex = pieces.indexOf(randomPiece);
-                    this.selectAndMovePiece(currentColor, pieceIndex);
-                } else {
-                    if (this.diceValue !== 6) {
-                        setTimeout(() => this.nextPlayer(), 1000);
-                    } else {
-                        setTimeout(() => this.simulateAITurn(), 1000);
-                    }
+                if (this.consecutiveSixes === 3) {
+                    this.currentRolls = [];
+                    this.consecutiveSixes = 0;
+                    this.hasRolled = false;
+                    this.updateRollsDisplay(currentColor);
+                    setTimeout(() => {
+                        this.nextPlayer();
+                    }, 1000);
+                    return;
                 }
-            }, 500);
+                
+                this.hasRolled = false;
+                setTimeout(() => this.simulateAITurn(), 1000);
+            } else {
+                this.hasRolled = true;
+                this.consecutiveSixes = 0;
+                setTimeout(() => this.simulateAIMove(), 1000);
+            }
         }, 500);
+    }
+
+    simulateAIMove() {
+        const currentColor = this.players[this.currentPlayerIndex].color;
+        const pieces = this.pieces[currentColor];
+        
+        const movablePieces = pieces.filter((piece, index) => {
+            return this.canPieceUseAnyRoll(piece, currentColor);
+        });
+        
+        if (movablePieces.length > 0) {
+            const randomPiece = movablePieces[Math.floor(Math.random() * movablePieces.length)];
+            const pieceIndex = pieces.indexOf(randomPiece);
+            const validRolls = this.getValidRollsForPiece(randomPiece, currentColor);
+            const selectedRoll = validRolls[Math.floor(Math.random() * validRolls.length)];
+            
+            setTimeout(() => {
+                this.movePieceWithRoll(currentColor, pieceIndex, selectedRoll);
+            }, 500);
+        } else {
+            setTimeout(() => {
+                this.endTurn();
+            }, 1000);
+        }
     }
 
     updateCurrentPlayerDisplay() {
@@ -921,6 +1173,8 @@ class LudoGame {
         ['red', 'green', 'yellow', 'blue'].forEach(color => {
             const avatarClass = `${color}-avatar`;
             const avatar = document.querySelector(`.${avatarClass}`);
+            const timerElement = document.getElementById(`timer${color.charAt(0).toUpperCase() + color.slice(1)}`);
+            
             if (avatar) {
                 if (color === currentColor) {
                     avatar.classList.add('active');
@@ -928,7 +1182,51 @@ class LudoGame {
                     avatar.classList.remove('active');
                 }
             }
+            
+            if (timerElement) {
+                if (color === currentColor) {
+                    timerElement.classList.add('active');
+                } else {
+                    timerElement.classList.remove('active');
+                }
+            }
         });
+        
+        this.startTurnTimer();
+    }
+    
+    startTurnTimer() {
+        if (this.turnTimer) {
+            clearInterval(this.turnTimer);
+        }
+        
+        this.turnTimeRemaining = 30;
+        const currentColor = this.players[this.currentPlayerIndex].color;
+        const timerElement = document.getElementById(`timer${currentColor.charAt(0).toUpperCase() + currentColor.slice(1)}`);
+        
+        if (timerElement) {
+            timerElement.textContent = this.turnTimeRemaining;
+        }
+        
+        this.turnTimer = setInterval(() => {
+            this.turnTimeRemaining--;
+            
+            if (timerElement) {
+                timerElement.textContent = this.turnTimeRemaining;
+            }
+            
+            if (this.turnTimeRemaining <= 0) {
+                clearInterval(this.turnTimer);
+                this.endTurn();
+            }
+        }, 1000);
+    }
+    
+    stopTurnTimer() {
+        if (this.turnTimer) {
+            clearInterval(this.turnTimer);
+            this.turnTimer = null;
+        }
     }
 
     generateRoomCode() {
