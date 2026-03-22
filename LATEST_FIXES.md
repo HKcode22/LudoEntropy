@@ -173,3 +173,48 @@ if (this.diceValue === 6) {
 ✅ Intuitive gameplay
 
 Enjoy the game! 🎲
+please take a look and understand my entire code base, im trying to recreate ludo star, as u can see in the first screenshot, in the second screenshot this is what i have so far as the clone, there are issues with the ludo game i am trying to make and i want u to fix it, i want u to fix the logical parts of the game, as u see in the first screen shot when local gooner user gets a 6 and 5 they open the pawn from 6 and then have 5 remaining left and when they run the 5 look where the pawn ends up at, the ties swuares is what is used for counting, u start from the starting point, u need to understnad how the ludo game works its logical rules, i need u to correct the errors and then play the game ur self to test it out if it is working as its supposed to, if i choose a color the board is not rotated where the color is on my pov on the bottom and i dont know where i am then, there are extra tiles i want u to fix the midle should be a triangle and pay attention on the first screenshot
+
+Ludo is a classic board game where the goal is to move all four of your pawns from your starting base, around the board track, and into your home triangle in the center. 
+The Board & Exact Tiles
+A standard Ludo board is square with a cross-shaped play area. Each arm of the cross consists of three columns of squares, typically with six squares per column. 
+Wikipedia
+Wikipedia
+ +4
+Total Tiles on Track: The main circuit around the board usually consists of 52 spaces.
+The Bases: In each of the four corners is a large colored "pocket" or "yard" where your four pawns start the game out of play.
+Starting Squares: Each player has one colored square outside their base. This is the entry point where a pawn is placed once it is "in play".
+Home Columns: Each color has a dedicated "Home Column" consisting of 5 colored squares leading toward the center. Only pawns of that matching color can enter these squares.
+Safe Squares: Standard boards often have 8 safe squares (marked with a star or specific color) where pawns cannot be captured. These include the four starting squares and four additional squares midway through the track.
+Home Triangle: The large central square is divided into four colored triangles. This is the final destination for your pawns. 
+Wikipedia
+Wikipedia
+ +13
+Pawn Movement Rules
+Pawns move clockwise around the board according to the roll of a single six-sided die. 
+YouTube
+YouTube
+ +9
+Entering Play: You must roll a 6 to move a pawn from your base onto the starting square. Rolling a 6 also grants you an extra roll.
+Continuous Movement: Once a pawn is on the track, you move it forward the exact number shown on the die. You can jump over other pawns (your own or opponents') but cannot land on the same square as your own pawn unless forming a "block".
+Capturing: If your pawn lands on a square occupied by an opponent’s pawn, their pawn is captured and sent back to its starting base. You may also receive a bonus roll for capturing.
+The Three Sixes Rule: If you roll a 6 three times in a row, your entire turn is forfeited and you cannot move. 
+YouTube
+YouTube
+ +19
+Entering the Home Triangle
+To finish the game, your pawns must complete a full lap and enter the Home Column of their color. 
+Wikipedia
+Wikipedia
+ +6
+Exact Roll Required: To land in the final Home Triangle, you must roll the exact number needed to reach the end. If you roll a number higher than what is required to reach the center, the pawn cannot move and you must wait for your next turn.
+Winning: The first player to get all four pawns into their Home Triangle is the winner. 
+YouTube
+YouTube
+ +14
+please read the @ExactRules.md @COMPLETE_REDESIGN.md @FEATURES.md @FINAL_LAYOUT.md @GAMEPLAY.md @Instructions.md @INTERFACE_GUIDE.md @LATEST_FIXES.md 
+
+i dont want u to change how the canvas board pawns look like they look good i just want u to fix the errors of the game 
+
+
+
