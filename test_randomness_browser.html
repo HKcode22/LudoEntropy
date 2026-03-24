@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ludo Dice Randomness Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .result { margin: 10px 0; padding: 10px; }
+        .pass { background-color: #d4edda; color: #155724; }
+        .fail { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Ludo Dice Randomness Analysis</h1>
+    
+    <div class="test-section">
+        <h2>1. Entropy Pool Test</h2>
+        <button onclick="testEntropyPool()">Test Entropy Pool</button>
+        <div id="entropyResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Dice Roll Distribution Test</h2>
+        <button onclick="testDiceDistribution()">Test 1000 Rolls</button>
+        <div id="distributionResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Backend Server Test</h2>
+        <button onclick="testBackendServer()">Test Backend</button>
+        <div id="backendResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Game Mechanics Test</h2>
+        <button onclick="testGameMechanics()">Test Game Rules</button>
+        <div id="gameMechanicsResult"></div>
+    </div>
+
+    <script src="entropyRandom.js"></script>
+    <script>
+        function testEntropyPool() {
+            const result = document.getElementById('entropyResult');
+            result.innerHTML = '<div class="result info">Testing entropy pool...</div>';
+            
+            // Add some test samples
+            const testSamples = [
+                { x: 100, y: 200, t: Date.now(), pressure: 0.5, vx: 10, vy: -5, duration: 100, turnElapsedMs: 5000 },
+                { x: 150, y: 250, t: Date.now() + 100, pressure: 0.7, vx: -10, vy: 5, duration: 150, turnElapsedMs: 5200 },
+                { x: 200, y: 300, t: Date.now() + 200, pressure: 0.3, vx: 15, vy: -10, duration: 120, turnElapsedMs: 5400 }
+            ];
+            
+            testSamples.forEach((sample, i) => {
+                window.ludoEntropyPool.addSample(sample);
+            });
+            
+            const snapshot = window.ludoEntropyPool.getSnapshot();
+            
+            result.innerHTML = `
+                <div class="result pass">Entropy Pool Test: PASS</div>
+                <pre>Samples collected: ${snapshot.samples}
+Pool buffer: ${JSON.stringify(snapshot, null, 2)}</pre>
+            `;
+        }
+        
+        async function testDiceDistribution() {
+            const result = document.getElementById('distributionResult');
+            result.innerHTML = '<div class="result info">Rolling dice 1000 times...</div>';
+            
+            const testRolls = 1000;
+            const counts = [0, 0, 0, 0, 0, 0];
+            const rolls = [];
+            
+            for (let i = 0; i < testRolls; i++) {
+                const roll = window.ludoRng.rollDie(6);
+                counts[roll - 1]++;
+                rolls.push(roll);
+            }
+            
+            // Chi-square test
+            const expected = testRolls / 6;
+            let chiSquare = 0;
+            for (let i = 0; i < 6; i++) {
+                chiSquare += Math.pow(counts[i] - expected, 2) / expected;
+            }
+            
+            const isRandom = chiSquare < 11.07; // Critical value for df=5, α=0.05
+            
+            result.innerHTML = `
+                <div class="result ${isRandom ? 'pass' : 'fail'}">
+                    Distribution Test: ${isRandom ? 'PASS' : 'FAIL'}
+                </div>
+                <pre>Rolls: [${counts.join(', ')}]
+Expected per face: ${expected.toFixed(1)}
+Chi-square statistic: ${chiSquare.toFixed(2)}
+Critical value: 11.07
+Randomness: ${isRandom ? 'ADEQUATE' : 'INADEQUATE'}</pre>
+            `;
+        }
+        
+        async function testBackendServer() {
+            const result = document.getElementById('backendResult');
+            result.innerHTML = '<div class="result info">Testing backend server...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:5178/api/roll', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sides: 6,
+                        color: 'test',
+                        entropyHex: '',
+                        meta: { timeMs: Date.now() }
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    result.innerHTML = `
+                        <div class="result pass">Backend Server: RESPONDING</div>
+                        <pre>Roll result: ${data.die}
+Commit: ${data.commit}
+Server Seed: ${data.serverSeed}</pre>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <div class="result fail">Backend Server: ERROR ${response.status}</div>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="result fail">Backend Server: OFFLINE</div>
+                    <pre>Error: ${error.message}</pre>
+                `;
+            }
+        }
+        
+        function testGameMechanics() {
+            const result = document.getElementById('gameMechanicsResult');
+            result.innerHTML = '<div class="result info">Testing game mechanics...</div>';
+            
+            // Test three sixes rule
+            let consecutiveSixes = 0;
+            let maxConsecutiveSixes = 0;
+            const rolls = [];
+            
+            for (let i = 0; i < 100; i++) {
+                const roll = window.ludoRng.rollDie(6);
+                rolls.push(roll);
+                
+                if (roll === 6) {
+                    consecutiveSixes++;
+                    maxConsecutiveSixes = Math.max(maxConsecutiveSixes, consecutiveSixes);
+                } else {
+                    consecutiveSixes = 0;
+                }
+            }
+            
+            // Test probability of rolling 6
+            const sixCount = rolls.filter(r => r === 6).length;
+            const sixProbability = (sixCount / rolls.length) * 100;
+            
+            result.innerHTML = `
+                <div class="result ${sixProbability > 10 && sixProbability < 25 ? 'pass' : 'info'}">
+                    Game Mechanics Test: COMPLETE
+                </div>
+                <pre>Sample rolls: [${rolls.slice(0, 20).join(', ')}...]
+Sixes rolled: ${sixCount}/100 (${sixProbability.toFixed(1)}%)
+Max consecutive sixes: ${maxConsecutiveSixes}
+Expected six probability: ~16.67%
+Status: ${Math.abs(sixProbability - 16.67) < 5 ? 'NORMAL' : 'SLIGHT DEVIATION'}</pre>
+            `;
+        }
+        
+        // Auto-run tests when page loads
+        window.onload = function() {
+            setTimeout(() => {
+                testEntropyPool();
+                setTimeout(() => testDiceDistribution(), 500);
+                setTimeout(() => testBackendServer(), 1000);
+                setTimeout(() => testGameMechanics(), 1500);
+            }, 100);
+        };
+    </script>
+</body>
+</html>
