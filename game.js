@@ -3700,7 +3700,7 @@ if (typeof window !== 'undefined' && typeof location !== 'undefined' && location
         bindBtn('debugResetBtn', () => {
             location.reload();
         });
-
+ 
         setInterval(renderStatus, 300);
         renderStatus();
     }
