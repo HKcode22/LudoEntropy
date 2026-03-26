@@ -39,6 +39,15 @@ class LudoGame {
         // All drawing happens through this.ctx (e.g., this.ctx.fillRect())
         this.ctx = this.canvas.getContext('2d');
 
+        // === DEBUG MODE FOR RANDOMNESS TESTING ===
+        this.debugMode = {
+            enabled: true,  // Set to true to see all dice rolls
+            showAllRolls: true,
+            logAllActions: true
+        };
+
+        console.log('🎮 Ludo Game v2.0 - DEBUG MODE ENABLED - All dice clickable for testing!');
+
         // === MULTIPLAYER/ROOM VARIABLES ===
         this.isHost = false;           // Are you the room creator? (true/false)
         this.roomCode = null;          // 6-letter code for friends to join (e.g., "ABC123")
@@ -49,6 +58,7 @@ class LudoGame {
         this.diceValue = 1;            // Last dice roll (1-6)
         this.gameState = 'waiting';    // Current state: 'waiting', 'playing', 'ended'
         this.myColor = null;           // YOUR player color ('red', 'green', 'yellow', or 'blue')
+        this.isRolling = false;        // Flag to prevent multiple simultaneous rolls
 
         // === PIECE SELECTION & MOVEMENT ===
         this.selectedPiece = null;     // Which piece is currently selected?
@@ -86,16 +96,8 @@ class LudoGame {
 
         // === BACKEND SERVER FOR DICE ROLLS ===
         // This connects to a local server for true random dice rolls
-        this.backendBaseUrl = (() => {
-            if (typeof window === 'undefined' || !window.location) return '';
-            const hostname = String(window.location.hostname || '');
-            const isLocal =
-                hostname === 'localhost' ||
-                hostname === '127.0.0.1' ||
-                hostname === '' ||
-                hostname.endsWith('.local');
-            return isLocal ? 'http://localhost:5178' : '';
-        })();
+        // Using port 5179 for dice rolls
+        this.backendBaseUrl = 'http://localhost:5179';
 
         // === INITIALIZE THE GAME ===
         this.initializeBoard();      // Create the 15x15 grid and paths
@@ -217,7 +219,8 @@ class LudoGame {
         if (!this.boardSize) return;
 
         const rect = this.canvas.getBoundingClientRect();
-        const displaySize = Math.min(rect.width, rect.height);
+        // For desktop, use a larger minimum size to accommodate the bigger board
+        const displaySize = Math.min(rect.width, rect.height, window.innerHeight * 0.85);
         if (!displaySize || displaySize <= 0) return;
 
         const dpr = Number(window.devicePixelRatio || 1);
@@ -330,8 +333,8 @@ class LudoGame {
         this.boardSize = 15;  // 15x15 grid
 
         if (!this.canvas.width || !this.canvas.height) {
-            this.canvas.width = 700;
-            this.canvas.height = 700;
+            this.canvas.width = 900;
+            this.canvas.height = 900;
         }
 
         // Calculate cell size in pixels
@@ -569,7 +572,7 @@ class LudoGame {
      */
     initializeEventListeners() {
         // Menu button listeners
-        document.getElementById('quickPlayBtn').addEventListener('click', () => this.quickPlay());
+        // document.getElementById('quickPlayBtn').addEventListener('click', () => this.quickPlay());
         document.getElementById('createGameBtn').addEventListener('click', () => this.createGame());
         document.getElementById('joinGameBtn').addEventListener('click', () => this.showJoinScreen());
         document.getElementById('joinSubmitBtn').addEventListener('click', () => this.joinGame());
@@ -603,6 +606,19 @@ class LudoGame {
      * Each player's dice can be clicked to roll (only during their turn)
      */
     setupDiceEventListeners() {
+        // Clear existing event listeners first to prevent multiple rolls
+        ['red', 'green', 'yellow', 'blue'].forEach((color) => {
+            const { diceId } = this.getUiIdsForColor(color);
+            let diceEl = document.getElementById(diceId);
+            if (!diceEl) return;
+
+            // Clone the element to remove all event listeners
+            const newDiceEl = diceEl.cloneNode(true);
+            diceEl.parentNode.replaceChild(newDiceEl, diceEl);
+            diceEl = newDiceEl;   // update reference
+        });
+
+        // Now add fresh event listeners
         ['red', 'green', 'yellow', 'blue'].forEach((color) => {
             const { diceId } = this.getUiIdsForColor(color);
             const diceEl = document.getElementById(diceId);
@@ -652,8 +668,16 @@ class LudoGame {
                     x, y
                 };
 
-                if (color !== this.myColor) return;
-                this.rollDice();
+                // Allow clicking any dice for randomness testing in debug mode
+                // In normal mode, only allow current player's dice
+                const isDebugMode = this.debugMode && this.debugMode.enabled;
+                const currentColor = this.players[this.currentPlayerIndex]?.color;
+                
+                if (isDebugMode || color === currentColor) {
+                    this.rollDice(color);
+                } else {
+                    console.log(`Not ${color}'s turn. Current turn: ${currentColor}. Enable debug mode to test all dice.`);
+                }
             });
         });
     }
@@ -664,13 +688,21 @@ class LudoGame {
      * Changes cursor to pointer when hovering over movable pieces
      */
     handleCanvasHover(e) {
-        if (!this.canMove || !this.isHumanLocalTurn()) {
+        if (!this.canMove) {
             this.canvas.style.cursor = 'default';
             return;
         }
 
         const { x, y } = this.getCanvasPointFromEvent(e);
         const currentColor = this.players[this.currentPlayerIndex].color;
+        
+        // For multiplayer, allow any human player to see hover effects
+        const isMultiplayerMode = this.players.length > 1;
+        if (!isMultiplayerMode && currentColor !== this.myColor) {
+            this.canvas.style.cursor = 'default';
+            return;
+        }
+
         const pieces = this.pieces[currentColor];
 
         let hovering = false;
@@ -695,8 +727,180 @@ class LudoGame {
      * Currently uses mock connection for local play
      */
     initializeWebSocket() {
-        this.mockPlayers = [];
-        this.isConnected = true;
+        // Replace with your actual WebSocket server URL
+        this.ws = new WebSocket('ws://localhost:8081');
+        this.isConnected = false;
+
+        this.ws.onopen = () => {
+            console.log('Connected to game server');
+            this.isConnected = true;
+        };
+
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            this.handleServerMessage(data);
+        };
+
+        this.ws.onclose = () => {
+            console.log('Disconnected from game server');
+            this.isConnected = false;
+        };
+
+        this.ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            this.isConnected = false;
+        };
+    }
+
+    handleServerMessage(data) {
+        console.log('Received server message:', data);
+        
+        switch (data.type) {
+            case 'gameCreated':
+                this.handleGameCreated(data);
+                break;
+            case 'gameJoined':
+                this.handleGameJoined(data);
+                break;
+            case 'playerJoined':
+                this.handlePlayerJoined(data);
+                break;
+            case 'playerLeft':
+                this.handlePlayerLeft(data);
+                break;
+            case 'gameStarted':
+                this.handleGameStarted(data);
+                break;
+            case 'diceRolled':
+                this.handleDiceRolled(data);
+                break;
+            case 'pieceMoved':
+                this.handlePieceMoved(data);
+                break;
+            case 'turnChanged':
+                this.handleTurnChanged(data);
+                break;
+            case 'chatMessage':
+                this.handleChatMessage(data);
+                break;
+            case 'error':
+                console.error('Server error:', data.message);
+                alert(data.message);
+                break;
+            default:
+                console.log('Unknown message type:', data.type);
+        }
+    }
+
+    handleGameCreated(data) {
+        this.roomCode = data.roomCode;
+        this.players = data.players;
+        document.getElementById('roomCode').textContent = this.roomCode;
+        this.showLobbyScreen();
+        this.updateLobby();
+    }
+
+    handleGameJoined(data) {
+        this.roomCode = data.roomCode;
+        this.players = data.players;
+        this.showLobbyScreen();
+        this.updateLobby();
+    }
+
+    handlePlayerJoined(data) {
+        this.players = data.players;
+        this.updateLobby();
+    }
+
+    handlePlayerLeft(data) {
+        this.players = data.players;
+        this.updateLobby();
+    }
+
+    handleGameStarted(data) {
+        this.currentPlayerIndex = this.players.findIndex(p => p.color === data.currentTurn);
+        this.startGame();
+    }
+
+    handleDiceRolled(data) {
+        // Update dice display for the rolling player
+        const { playerColor, diceValue } = data;
+        const diceElement = document.getElementById(`dice${playerColor.charAt(0).toUpperCase() + playerColor.slice(1)}`);
+        if (diceElement) {
+            diceElement.textContent = diceValue;
+            diceElement.classList.add('dice-rolled');
+            setTimeout(() => diceElement.classList.remove('dice-rolled'), 500);
+        }
+        
+        // Update turn if it's a multiplayer game
+        if (this.roomCode) {
+            const playerIndex = this.players.findIndex(p => p.color === playerColor);
+            this.currentPlayerIndex = (playerIndex + 1) % this.players.length;
+        }
+    }
+
+    handlePieceMoved(data) {
+        const { playerColor, pieceIndex, newPosition } = data;
+        // Update piece position on the board
+        this.updatePiecePosition(playerColor, pieceIndex, newPosition);
+    }
+
+    handleTurnChanged(data) {
+        const { currentPlayer } = data;
+        // Update current player index based on the turn change
+        this.currentPlayerIndex = this.players.findIndex(p => p.color === currentPlayer);
+        if (this.currentPlayerIndex === -1) {
+            console.error(`Invalid player color in turnChanged: ${currentPlayer}`);
+            return;
+        }
+        // Update UI to reflect turn change
+        this.updateCurrentPlayerDisplay();
+        this.drawBoard();
+    }
+
+    updatePiecePosition(playerColor, pieceIndex, newPosition) {
+        const piece = this.pieces[playerColor][pieceIndex];
+        if (!piece) return;
+        
+        const oldPosition = piece.position;
+        const wasInHome = piece.inHome;
+        
+        // Update piece state based on new position
+        if (newPosition === 0 && wasInHome) {
+            // Piece leaving home
+            piece.inHome = false;
+            piece.position = 0;
+            this.animatePieceMovement(playerColor, pieceIndex, wasInHome, oldPosition, 0, () => {
+                this.afterPieceMove(playerColor);
+            });
+        } else if (newPosition === 56) {
+            // Piece reaching goal
+            piece.inGoal = true;
+            piece.position = 56;
+            this.animatePieceMovement(playerColor, pieceIndex, false, oldPosition, 56, () => {
+                this.afterPieceMove(playerColor);
+            });
+        } else if (newPosition > 0 && newPosition < 56) {
+            // Normal movement on track
+            piece.position = newPosition;
+            this.animatePieceMovement(playerColor, pieceIndex, false, oldPosition, newPosition, () => {
+                this.checkCapture(playerColor, piece);
+                this.afterPieceMove(playerColor);
+            });
+        }
+    }
+
+    handleChatMessage(data) {
+        // Display chat message (you can implement chat UI later)
+        console.log(`${data.playerName}: ${data.message}`);
+    }
+
+    sendToServer(message) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(message));
+        } else {
+            console.error('Not connected to server');
+        }
     }
 
     /**
@@ -731,24 +935,56 @@ class LudoGame {
 
     /**
      * createGame - Create a new multiplayer room
-     * 
+     *
      * Player becomes host and waits for others to join
+     * If WebSocket is not connected, creates a local game instead
      */
     createGame() {
-        this.isHost = true;
-        this.roomCode = this.generateRoomCode();
-        this.myColor = 'red';
-        this.players = [{ id: 'player1', color: 'red', name: 'You' }];
-        this.mockPlayers = [...this.players];
+        const playerName = document.getElementById('playerNameInput')?.value?.trim() || 'Player';
+        const playerColor = document.getElementById('playerColorSelect')?.value || 'red';
 
+        this.isHost = true;
+        this.myColor = playerColor;
+
+        // If WebSocket is not connected, create a local game
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            console.log('WebSocket not connected, creating local game...');
+            this.createLocalGame(playerName, playerColor);
+            return;
+        }
+
+        // Send create game request to server
+        this.sendToServer({
+            type: 'createGame',
+            playerName: playerName,
+            playerColor: playerColor
+        });
+    }
+
+    /**
+     * createLocalGame - Create a local game (fallback when server is unavailable)
+     *
+     * @param {string} playerName - The player's name
+     * @param {string} playerColor - The player's chosen color
+     */
+    createLocalGame(playerName, playerColor) {
+        this.roomCode = this.generateRoomCode();
+        this.myColor = playerColor; // <-- important
+        
+        // Create players array with human player + 3 AI opponents
+        const defaultNames = { red: 'Player 1', green: 'Player 2', yellow: 'Player 3', blue: 'Player 4' };
+        this.players = this.colors.map(color => ({
+            id: `player-${color}`,
+            color,
+            name: color === playerColor ? playerName : defaultNames[color]
+        }));
+
+        // Update UI
         document.getElementById('roomCode').textContent = this.roomCode;
         this.showLobbyScreen();
         this.updateLobby();
-
-        // Simulate players joining
-        setTimeout(() => this.simulatePlayerJoin('green'), 2000);
-        setTimeout(() => this.simulatePlayerJoin('yellow'), 4000);
-        setTimeout(() => this.simulatePlayerJoin('blue'), 6000);
+        
+        console.log(`Local game created. Room code: ${this.roomCode}, Your color: ${playerColor}`);
     }
 
     /**
@@ -768,22 +1004,28 @@ class LudoGame {
      */
     joinGame() {
         const code = document.getElementById('roomCodeInput').value.toUpperCase();
+        const playerName = document.getElementById('playerNameInput')?.value?.trim() || 'Player';
+        const playerColor = document.getElementById('playerColorSelect')?.value || 'blue';
+
         if (code.length === 6) {
-            this.roomCode = code;
             this.isHost = false;
+            this.myColor = playerColor;
 
-            const availableColors = ['red', 'green', 'yellow', 'blue'];
-            const colorIndex = window.ludoRng ? window.ludoRng.rollDie(availableColors.length) - 1 : Math.floor(Math.random() * availableColors.length);
-            this.myColor = availableColors[colorIndex];
+            // If WebSocket is not connected, show error
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                alert('Cannot connect to game server. Make sure the host has created a game and the server is running. For local play, use "Create Game" instead.');
+                return;
+            }
 
-            this.players = [
-                { id: 'player1', color: 'red', name: 'Player 1' },
-                { id: 'player2', color: this.myColor, name: 'You' }
-            ];
-
-            document.getElementById('roomCode').textContent = this.roomCode;
-            this.showLobbyScreen();
-            this.updateLobby();
+            // Send join game request to server
+            this.sendToServer({
+                type: 'joinGame',
+                roomCode: code,
+                playerName: playerName,
+                playerColor: playerColor
+            });
+        } else {
+            alert('Please enter a valid 6-digit room code');
         }
     }
 
@@ -807,9 +1049,64 @@ class LudoGame {
         });
 
         const startBtn = document.getElementById('startGameBtn');
-        if (this.isHost && this.players.length === 4) {
+        if (this.isHost && this.players.length >= 2) {
             startBtn.disabled = false;
         }
+    }
+
+    /**
+     * positionPlayersByPov - Position player UI elements based on player's POV
+     *
+     * When a player chooses a color, that color's panel moves to bottom-left.
+     * Other panels rotate accordingly around the board.
+     * Base layout: Blue=top-left, Red=top-right, Yellow=bottom-left, Green=bottom-right
+     */
+    positionPlayersByPov() {
+        if (!this.myColor) {
+            console.log('positionPlayersByPov: myColor not set');
+            return;
+        }
+        console.log('positionPlayersByPov called, myColor:', this.myColor);
+        
+        // Correct POV positions - YOUR color always at bottom-left
+        // Board corners: Blue(top-left), Red(top-right), Yellow(bottom-left), Green(bottom-right)
+        const povPositions = {
+            blue:   { blue: 'player-bottom-left',  red: 'player-top-left',    green: 'player-top-right',   yellow: 'player-bottom-right' },
+            red:    { red: 'player-bottom-left',   green: 'player-top-left',  yellow: 'player-top-right',  blue: 'player-bottom-right' },
+            yellow: { yellow: 'player-bottom-left', blue: 'player-top-left',   red: 'player-top-right',    green: 'player-bottom-right' },
+            green:  { green: 'player-bottom-left', yellow: 'player-top-left',  blue: 'player-top-right',   red: 'player-bottom-right' }
+        };
+        
+        const positions = povPositions[this.myColor];
+        if (!positions) {
+            console.error('No positions found for color:', this.myColor);
+            return;
+        }
+
+        // Remove all positioning classes first
+        document.querySelectorAll('.player-info').forEach(el => {
+            el.classList.remove('player-top-left', 'player-top-right', 'player-bottom-left', 'player-bottom-right');
+        });
+
+        // Apply new class to each color's panel
+        Object.entries(positions).forEach(([color, posClass]) => {
+            const panel = document.querySelector(`.player-info[data-color="${color}"]`);
+            if (panel) {
+                panel.classList.add(posClass);
+                panel.style.display = 'flex';
+                panel.style.visibility = 'visible';
+                panel.style.opacity = '1';
+                console.log(`Added class ${posClass} to ${color} panel`);
+            } else {
+                console.error(`Panel not found for ${color}`);
+            }
+        });
+    }
+
+    syncBoardWrapperTilt() {
+        const wrap = document.querySelector('.board-wrapper');
+        if (!wrap) return;
+        wrap.classList.remove('board-pov-tilt');
     }
 
     /**
@@ -822,6 +1119,15 @@ class LudoGame {
         const myIdx = this.players.findIndex(p => p.color === this.myColor);
         this.currentPlayerIndex = myIdx >= 0 ? myIdx : 0;
         this.rollsRemaining = 1;
+        
+        // Send game start to server if host
+        if (this.isHost && this.roomCode && this.isConnected) {
+            this.sendToServer({
+                type: 'startGame',
+                roomCode: this.roomCode
+            });
+        }
+        
         this.showGameScreen();
 
         setTimeout(() => {
@@ -829,19 +1135,27 @@ class LudoGame {
             this.syncBoardWrapperTilt();
             this.setupDiceEventListeners();
             this.syncSelfHud();
+            
+            // Wait extra 50ms for DOM to settle
+            setTimeout(() => this.positionPlayersByPov(), 50);
 
             this.players.forEach(player => {
                 const { nameId } = this.getUiIdsForColor(player.color);
                 const nameElement = document.getElementById(nameId);
+                console.log(`Setting name for ${player.color}, nameId: ${nameId}, element:`, nameElement);
                 if (nameElement) {
                     nameElement.textContent = player.name;
+                    console.log(`Name set to "${player.name}" for ${player.color}`);
+                } else {
+                    console.error(`Name element not found for ${player.color}`);
                 }
+                // Initialize dice with value 1
                 this.updateDiceDisplay(1, player.color);
             });
 
             this.drawBoard();
             this.updateCurrentPlayerDisplay();
-        }, 100);
+        }, 200);
     }
 
     /**
@@ -1552,17 +1866,21 @@ class LudoGame {
      * 
      * Main interaction handler:
      * 1. Check if player can move
-     * 2. Check if it's their turn
+     * 2. Check if it's their turn (multiplayer enabled)
      * 3. Find clicked piece
      * 4. Move piece if valid
      */
     handleCanvasClick(e) {
-        if (!this.canMove || !this.isHumanLocalTurn()) return;
+        if (!this.canMove) return;
 
         const { x, y } = this.getCanvasPointFromEvent(e);
 
         const currentColor = this.players[this.currentPlayerIndex].color;
-        if (currentColor !== this.myColor) return;
+        
+        // For multiplayer, allow any human player to move their pieces during their turn
+        // For single player, only allow the main player
+        const isMultiplayerMode = this.players.length > 1;
+        if (!isMultiplayerMode && currentColor !== this.myColor) return;
 
         const pieces = this.pieces[currentColor];
 
@@ -1590,7 +1908,10 @@ class LudoGame {
      * @param {number} pieceIndex - Piece index
      */
     selectAndMovePiece(color, pieceIndex) {
-        if (color !== this.myColor || !this.isHumanLocalTurn()) return;
+        // Allow any player to move their pieces in multiplayer mode
+        const isMultiplayerMode = this.players.length > 1;
+        if (!isMultiplayerMode && color !== this.myColor) return;
+        
         const piece = this.pieces[color][pieceIndex];
         const validRolls = this.getValidRollsForPiece(piece, color);
 
@@ -1701,6 +2022,18 @@ class LudoGame {
             // Leave home and enter track at position 0
             piece.inHome = false;
             piece.position = 0;
+            
+            // Send piece movement to server if in multiplayer game
+            if (this.roomCode && this.isConnected) {
+                this.sendToServer({
+                    type: 'movePiece',
+                    roomCode: this.roomCode,
+                    playerColor: color,
+                    pieceIndex: pieceIndex,
+                    newPosition: 0
+                });
+            }
+            
             this.animatePieceMovement(color, pieceIndex, wasInHome, oldPosition, 0, () => {
                 this.afterPieceMove(color);
             });
@@ -1712,12 +2045,36 @@ class LudoGame {
             if (newPosition === maxPosition) {
                 // Reached goal!
                 piece.inGoal = true;
+                
+                // Send piece movement to server if in multiplayer game
+                if (this.roomCode && this.isConnected) {
+                    this.sendToServer({
+                        type: 'movePiece',
+                        roomCode: this.roomCode,
+                        playerColor: color,
+                        pieceIndex: pieceIndex,
+                        newPosition: maxPosition
+                    });
+                }
+                
                 this.animatePieceMovement(color, pieceIndex, false, oldPosition, maxPosition, () => {
                     piece.position = maxPosition;
                     this.afterPieceMove(color);
                 });
             } else if (newPosition < maxPosition) {
                 // Normal move on track
+                
+                // Send piece movement to server if in multiplayer game
+                if (this.roomCode && this.isConnected) {
+                    this.sendToServer({
+                        type: 'movePiece',
+                        roomCode: this.roomCode,
+                        playerColor: color,
+                        pieceIndex: pieceIndex,
+                        newPosition: newPosition
+                    });
+                }
+                
                 this.animatePieceMovement(color, pieceIndex, false, oldPosition, newPosition, () => {
                     piece.position = newPosition;
                     this.checkCapture(color, piece);
@@ -1811,9 +2168,10 @@ class LudoGame {
                 this.highlightMovablePieces(color);
                 this.updateCurrentPlayerDisplay();
                 this.startTurnTimer();
-                if (!this.isHumanLocalTurn()) {
-                    setTimeout(() => this.simulateAIMove(), 450);
-                }
+                // AI automation disabled - only timeout automation remains
+                // if (!this.isHumanLocalTurn()) {
+                //     setTimeout(() => this.simulateAIMove(), 450);
+                // }
                 return;
             }
             // Dice left but no legal move - pass
@@ -1826,10 +2184,11 @@ class LudoGame {
             this.hasRolled = false;
             this.startTurnTimer();
 
-            const currentColor = this.players[this.currentPlayerIndex]?.color;
-            if (currentColor && currentColor !== this.myColor) {
-                setTimeout(() => this.simulateAITurn(), 250);
-            }
+            // AI automation disabled - only timeout automation remains
+            // const currentColor = this.players[this.currentPlayerIndex]?.color;
+            // if (currentColor && currentColor !== this.myColor) {
+            //     setTimeout(() => this.simulateAITurn(), 250);
+            // }
             return;
         }
 
@@ -1857,6 +2216,36 @@ class LudoGame {
     }
 
     /**
+     * checkForStack - Check if there are stacked pieces on a tile
+     * 
+     * A stack forms when:
+     * - Multiple pieces of the same color are on the same tile
+     * - OR multiple pieces of different colors are on the same tile (after stacking)
+     * 
+     * @param {string} color - Color of the piece to check
+     * @param {number} position - Position of the piece
+     * @returns {boolean} True if tile has stacked pieces (safe spot)
+     */
+    checkForStack(color, position) {
+        if (position >= 51 || position === 0) return false;
+        
+        const pathPos = this.paths[color][position];
+        let totalPiecesAtSpot = 0;
+        
+        Object.entries(this.pieces).forEach(([otherColor, otherPieces]) => {
+            otherPieces.forEach(op => {
+                if (op.inHome || op.inGoal || op.position >= 51) return;
+                const otherPathPos = this.paths[otherColor][op.position];
+                if (pathPos.x === otherPathPos.x && pathPos.y === otherPathPos.y) {
+                    totalPiecesAtSpot++;
+                }
+            });
+        });
+        
+        return totalPiecesAtSpot > 1;
+    }
+
+    /**
      * checkCapture - Check if a piece captures an opponent
      * 
      * Capture rules:
@@ -1864,6 +2253,7 @@ class LudoGame {
      * - Cannot capture on safe spots (stars)
      * - Cannot capture on starting positions
      * - Cannot capture if multiple opponent pieces (safe)
+     * - Cannot capture if tile is stacked (temporary safe spot)
      * 
      * @param {string} color - Moving piece color
      * @param {Object} piece - Moving piece object
@@ -1885,6 +2275,9 @@ class LudoGame {
                           startingSpotCoords.some(s => s.x === pathPos.x && s.y === pathPos.y);
 
         if (isSafeSpot) return;
+
+        // Check if this tile is a stack (temporary safe spot)
+        if (this.checkForStack(color, piece.position)) return;
 
         let captured = false;
         Object.entries(this.pieces).forEach(([otherColor, otherPieces]) => {
@@ -2053,45 +2446,50 @@ class LudoGame {
     }
 
     /**
-     * _backendRollDie - Roll die using backend server
-     * 
-     * Falls back to local provably fair if backend unavailable
-     * 
+     * _backendRollDie - Roll die using backend server ONLY
+     *
+     * NO fallback - dice rolls MUST come from backend server
+     *
      * @param {number} sides - Number of sides
      * @param {string} color - Player color
      * @param {Object} metaOverride - Override entropy metadata
      * @returns {Promise<number>} Die roll result
      */
     async _backendRollDie(sides = 6, color = 'unknown', metaOverride = null) {
+        // Backend-only dice rolling - NO fallback
         if (!this.backendBaseUrl) {
-            this._lastRollFromBackend = false;
-            return this._provablyFairRollDie(sides, `backendFallback:${color}`);
-        }
-
-        const entropyBytes = this._entropySnapshotToBytes();
-        const entropyHex = this._bytesToHex(entropyBytes);
-
-        const defaultMeta = {
-            timeMs: Date.now(),
-            pressure: 0,
-            vx: 0,
-            vy: 0,
-            durationMs: 0,
-            turnElapsedMs: 0
-        };
-        const meta = metaOverride || this._lastDiceEntropyMetaForBackend || defaultMeta;
-
-        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-        const timeoutMs = 2500;
-        let timeoutId = null;
-        if (controller) {
-            timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            console.error('[ludo.provablyFair] Backend URL not configured. Dice rolls require backend server.');
+            throw new Error('Backend server not configured. Dice rolls require backend server at localhost:5179');
         }
 
         try {
-            const resp = await fetch(`${this.backendBaseUrl}/api/roll`, {
+            const entropyBytes = this._entropySnapshotToBytes();
+            const entropyHex = this._bytesToHex(entropyBytes);
+
+            const defaultMeta = {
+                timeMs: Date.now(),
+                pressure: 0,
+                vx: 0,
+                vy: 0,
+                durationMs: 0,
+                turnElapsedMs: 0
+            };
+            const meta = metaOverride || this._lastDiceEntropyMetaForBackend || defaultMeta;
+
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timeoutMs = 5000;
+
+            if (controller) {
+                setTimeout(() => controller.abort(), timeoutMs);
+            }
+
+            console.log('[ludo.provablyFair] Requesting dice roll from backend:', { sides, color, entropyHex });
+
+            const response = await fetch(`${this.backendBaseUrl}/api/roll`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     sides,
                     color,
@@ -2101,25 +2499,33 @@ class LudoGame {
                 signal: controller ? controller.signal : undefined
             });
 
-            if (!resp.ok) throw new Error(`backend roll failed: ${resp.status}`);
-            const data = await resp.json();
-            if (!data || typeof data.die !== 'number') throw new Error('backend roll missing die');
+            if (!response.ok) {
+                throw new Error(`Backend responded with ${response.status}`);
+            }
+
+            const data = await response.json();
             this._lastRollFromBackend = true;
+
+            // Verify the backend response has expected structure
+            if (typeof data.die !== 'number' || data.die < 1 || data.die > sides) {
+                throw new Error('Invalid die value from backend');
+            }
+
+            console.log('[ludo.provablyFair] Backend roll result:', data.die);
             return data.die;
-        } catch (err) {
-            console.warn('[ludo.backendRollDie] error; falling back', err);
+        } catch (error) {
+            console.error('[ludo.provablyFair] Backend roll FAILED - NO FALLBACK:', error.message);
             this._lastRollFromBackend = false;
-            return this._provablyFairRollDie(sides, `backendFallback:${color}`);
-        } finally {
-            if (timeoutId) clearTimeout(timeoutId);
+            // NO FALLBACK - throw error to stop the game
+            throw new Error(`Backend dice roll failed: ${error.message}. Please ensure backend server is running at ${this.backendBaseUrl}`);
         }
     }
 
     /**
      * _aiDiceEntropyMeta - Generate fake entropy metadata for AI rolls
-     * 
+     *
      * Makes AI rolls look like human rolls for consistency
-     * 
+     *
      * @returns {Object} Entropy metadata
      */
     _aiDiceEntropyMeta() {
@@ -2144,7 +2550,7 @@ class LudoGame {
     }
 
     /**
-     * rollDice - Roll the dice for current player
+     * rollDice - Roll the dice for specified player
      * 
      * Main dice rolling function:
      * 1. Check if player can roll
@@ -2152,74 +2558,121 @@ class LudoGame {
      * 3. Get roll result (backend or local)
      * 4. Handle special cases (three 6s, bonus rolls)
      * 5. Enable piece movement
+     * 
+     * @param {string} playerColor - Color of player rolling the dice (optional)
      */
-    rollDice() {
-        if (!this.players[this.currentPlayerIndex]) return;
-        if (this.players[this.currentPlayerIndex].color !== this.myColor) return;
+    rollDice(playerColor = null) {
+        // Prevent multiple simultaneous rolls
+        if (this.isRolling) {
+            console.log('Already rolling, please wait...');
+            return;
+        }
+
+        // Use provided color or current player's color
+        const targetColor = playerColor || this.players[this.currentPlayerIndex]?.color;
+        if (!targetColor) return;
+        
+        // Find the player index for the target color
+        const playerIndex = this.players.findIndex(p => p.color === targetColor);
+        if (playerIndex === -1) return;
+        
+        // In debug mode, allow any dice to be rolled for testing
+        // In normal mode, only allow rolling during the correct player's turn
+        const isDebugMode = this.debugMode && this.debugMode.enabled;
+        if (!isDebugMode && playerIndex !== this.currentPlayerIndex) {
+            console.log(`Not ${targetColor}'s turn yet. Current turn: ${this.players[this.currentPlayerIndex].color}`);
+            return;
+        }
+        
         if (this.hasRolled) return;
         if (this.currentRolls.length >= 3) return;
 
-        const currentColor = this.players[this.currentPlayerIndex].color;
-        const { diceId } = this.getUiIdsForColor(currentColor);
+        // Set rolling flag to prevent multiple rolls
+        this.isRolling = true;
+
+        const { diceId } = this.getUiIdsForColor(targetColor);
         const dice = document.getElementById(diceId);
         if (dice) dice.classList.add('rolling');
 
         setTimeout(() => {
             (async () => {
-                this.diceValue = await this._backendRollDie(6, currentColor, this._lastDiceEntropyMetaForBackend);
+                try {
+                    this.diceValue = await this._backendRollDie(6, targetColor, this._lastDiceEntropyMetaForBackend);
 
-                this.updateDiceDisplay(this.diceValue, currentColor);
-                if (dice) dice.classList.remove('rolling');
+                    // Debug logging for randomness testing
+                    if (this.debugMode.enabled && this.debugMode.showAllRolls) {
+                        console.log(`🎲 ${targetColor} rolled: ${this.diceValue} (Backend: ${this._lastRollFromBackend})`);
+                        console.log(`   Entropy:`, this._lastDiceEntropyMetaForBackend);
+                    }
 
-                this.currentRolls.push(this.diceValue);
-                this.updateRollsDisplay(currentColor);
+                    this.updateDiceDisplay(this.diceValue, targetColor);
+                    if (dice) dice.classList.remove('rolling');
 
-                // Handle rolling 6
-                if (this.diceValue === 6) {
-                    this.consecutiveSixes++;
+                    // Send dice roll to server if in multiplayer game
+                    if (this.roomCode && this.isConnected) {
+                        this.sendToServer({
+                            type: 'rollDice',
+                            roomCode: this.roomCode,
+                            playerColor: targetColor,
+                            diceValue: this.diceValue
+                        });
+                    }
 
-                    // Three 6s in a row = turn lost
-                    if (this.consecutiveSixes === 3) {
-                        alert('Three 6s in a row! Your turn is void.');
-                        this.currentRolls = [];
-                        this.consecutiveSixes = 0;
+                    this.currentRolls.push(this.diceValue);
+                    this.updateRollsDisplay(targetColor);
+
+                    // Handle rolling 6
+                    if (this.diceValue === 6) {
+                        this.consecutiveSixes++;
+
+                        // Three 6s in a row = turn lost
+                        if (this.consecutiveSixes === 3) {
+                            alert(`${targetColor} rolled three 6s in a row! Turn is void.`);
+                            this.currentRolls = [];
+                            this.consecutiveSixes = 0;
+                            this.hasRolled = false;
+                            this.updateRollsDisplay(targetColor);
+                            setTimeout(() => {
+                                this.nextPlayer();
+                            }, 1000);
+                            return;
+                        }
                         this.hasRolled = false;
-                        this.updateRollsDisplay(currentColor);
-                        setTimeout(() => {
-                            this.nextPlayer();
-                        }, 1000);
+                        const pieces6 = this.pieces[targetColor];
+                        const canMoveNow = pieces6.some((piece) => this.canPieceUseAnyRoll(piece, targetColor));
+                        if (!canMoveNow) {
+                            setTimeout(() => this.endTurn(), 1000);
+                            return;
+                        }
+                        this.canMove = canMoveNow;
+                        this.movablePieces = [];
+                        if (canMoveNow) this.highlightMovablePieces(targetColor);
+                        this.updateCurrentPlayerDisplay();
                         return;
                     }
-                    this.hasRolled = false;
-                    const pieces6 = this.pieces[currentColor];
-                    const canMoveNow = pieces6.some((piece) => this.canPieceUseAnyRoll(piece, currentColor));
-                    this.canMove = canMoveNow;
-                    this.movablePieces = [];
-                    if (canMoveNow) {
-                        this.highlightMovablePieces(currentColor);
+                    this.consecutiveSixes = 0;
+
+                    this.hasRolled = true;
+
+                    // Check if any piece can move
+                    const pieces = this.pieces[targetColor];
+                    const canMove = pieces.some(piece => {
+                        return this.canPieceUseAnyRoll(piece, targetColor);
+                    });
+
+                    if (canMove) {
+                        this.canMove = true;
+                        this.highlightMovablePieces(targetColor);
+                    } else {
+                        setTimeout(() => {
+                            this.endTurn();
+                        }, 1000);
                     }
                     this.updateCurrentPlayerDisplay();
-                    return;
+                } finally {
+                    // Clear rolling flag
+                    this.isRolling = false;
                 }
-                this.consecutiveSixes = 0;
-
-                this.hasRolled = true;
-
-                // Check if any piece can move
-                const pieces = this.pieces[currentColor];
-                const canMove = pieces.some(piece => {
-                    return this.canPieceUseAnyRoll(piece, currentColor);
-                });
-
-                if (canMove) {
-                    this.canMove = true;
-                    this.highlightMovablePieces(currentColor);
-                } else {
-                    setTimeout(() => {
-                        this.endTurn();
-                    }, 1000);
-                }
-                this.updateCurrentPlayerDisplay();
             })();
         }, 500);
     }
@@ -2274,13 +2727,23 @@ class LudoGame {
         this.hasRolled = false;
         this.pieceCaptured = false;
         this.lastMoveRoll = null;
+        
+        // Send turn change to server in multiplayer
+        if (this.roomCode && this.isConnected) {
+            this.sendToServer({
+                type: 'turnChanged',
+                roomCode: this.roomCode,
+                currentPlayer: this.players[this.currentPlayerIndex].color
+            });
+        }
+        
         this.updateCurrentPlayerDisplay();
         this.drawBoard();
 
-        // Start AI turn if it's not human's turn
-        if (this.players[this.currentPlayerIndex].color !== this.myColor) {
-            setTimeout(() => this.simulateAITurn(), 1500);
-        }
+        // AI automation disabled - other players wait for human interaction
+        // if (this.players[this.currentPlayerIndex].color !== this.myColor) {
+        //     setTimeout(() => this.simulateAITurn(), 1500);
+        // }
     }
 
     /**
@@ -2305,18 +2768,44 @@ class LudoGame {
             const { diceId } = this.getUiIdsForColor(color);
             const diceEl = document.getElementById(diceId);
             const diceDots = document.querySelector(`#${diceId} .dice-dots-small`);
+            
             if (diceDots) {
+                // Clear all dots completely
                 diceDots.innerHTML = '';
-                const positions = dotPositions[value] || [4];
+                
+                // Create grid container for dots
+                diceDots.style.display = 'grid';
+                diceDots.style.gridTemplateColumns = 'repeat(3, 1fr)';
+                diceDots.style.gridTemplateRows = 'repeat(3, 1fr)';
+                diceDots.style.gap = '2px';
+                diceDots.style.padding = '8px';
+                
+                // Create exactly 9 cells
                 for (let i = 0; i < 9; i++) {
-                    const dotDiv = document.createElement('div');
-                    if (positions.includes(i)) {
-                        dotDiv.className = 'dot-small';
+                    const cell = document.createElement('div');
+                    cell.style.width = '10px';
+                    cell.style.height = '10px';
+                    cell.style.display = 'flex';
+                    cell.style.alignItems = 'center';
+                    cell.style.justifyContent = 'center';
+                    
+                    // Only show dots for valid positions
+                    if (dotPositions[value] && dotPositions[value].includes(i)) {
+                        const dot = document.createElement('div');
+                        dot.style.width = '6px';
+                        dot.style.height = '6px';
+                        dot.style.backgroundColor = '#F4F7FA';
+                        dot.style.borderRadius = '50%';
+                        dot.style.boxShadow = '0 1px 2px rgba(0,0,0,0.3)';
+                        cell.appendChild(dot);
                     }
-                    diceDots.appendChild(dotDiv);
+                    
+                    diceDots.appendChild(cell);
                 }
+                
                 this.playerDice[color] = value;
             }
+            
             if (diceEl) {
                 diceEl.dataset.value = String(value);
                 diceEl.dataset.rollSource = this._lastRollFromBackend ? 'backend' : 'fallback';
@@ -2443,7 +2932,7 @@ class LudoGame {
     /**
      * updateCurrentPlayerDisplay - Update UI for current player
      * 
-     * Highlights current player, shows timer, enables dice
+     * Highlights current player with avatar glow, shows timer, enables dice
      */
     updateCurrentPlayerDisplay() {
         if (!this.players[this.currentPlayerIndex]) return;
@@ -2473,11 +2962,20 @@ class LudoGame {
             }
 
             if (diceElement) {
-                const canRollNow = this.hasRolled === false;
-                const clickable = (color === this.myColor) && (color === currentColor) && canRollNow;
+                const isCurrentPlayer = color === currentColor;
+                const isMyTurn = color === this.myColor;
+                const canRollNow = !this.hasRolled && this.currentRolls.length === 0;
+
+                const clickable = isCurrentPlayer && canRollNow;
                 diceElement.style.cursor = clickable ? 'pointer' : 'default';
-                diceElement.style.opacity = clickable ? '1' : '0.92';
+                diceElement.style.opacity = isCurrentPlayer ? '1' : '0.7';
                 diceElement.style.pointerEvents = clickable ? 'auto' : 'none';
+
+                if (isCurrentPlayer && canRollNow) {
+                    diceElement.classList.add('current-player-dice');
+                } else {
+                    diceElement.classList.remove('current-player-dice');
+                }
             }
         });
 
@@ -2499,17 +2997,19 @@ class LudoGame {
             this.turnTimer = null;
         }
 
-        const currentColor = this.players[this.currentPlayerIndex].color;
+        const currentColor = this.players[this.currentPlayerIndex]?.color;
+        if (!currentColor) return;
+        
         const { timerId } = this.getUiIdsForColor(currentColor);
         const timerElement = document.getElementById(timerId);
 
-        if (currentColor !== this.myColor) {
-            if (timerElement) timerElement.textContent = '—';
-            return;
-        }
-
         this.turnStartAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
         this.turnTimeRemaining = 30;
+
+        if (timerElement) {
+            timerElement.classList.add('active');
+            timerElement.textContent = String(this.turnTimeRemaining);
+        }
 
         const tick = () => {
             const el = document.getElementById(timerId);
@@ -2524,7 +3024,10 @@ class LudoGame {
             if (this.turnTimeRemaining <= 0) {
                 clearInterval(this.turnTimer);
                 this.turnTimer = null;
-                this.onTurnTimerExpired();
+                // Only auto-play if it's the local player's turn
+                if (currentColor === this.myColor) {
+                    this.onTurnTimerExpired();
+                }
             }
         }, 1000);
     }
@@ -2556,6 +3059,7 @@ class LudoGame {
             return;
         }
 
+        // Enhanced auto-play with advanced strategic AI decision making
         if (this.currentRolls.length > 0) {
             const canAny = this.pieces[c].some((p) => this.canPieceUseAnyRoll(p, c));
             if (canAny && (!this.movablePieces || this.movablePieces.length === 0)) {
@@ -2566,16 +3070,14 @@ class LudoGame {
         }
 
         if (this.canMove && this.movablePieces && this.movablePieces.length > 0) {
-            const idx = this.movablePieces[0];
-            const piece = this.pieces[c][idx];
-            const validRolls = this.getValidRollsForPiece(piece, c);
-            if (validRolls.length === 0) {
-                this.endTurn();
+            // Advanced strategic AI decision making
+            const gameState = this.analyzeGameState();
+            let bestMove = this.findBestStrategicMove(c, gameState);
+            
+            if (bestMove) {
+                this.movePieceWithRoll(c, bestMove.pieceIndex, bestMove.roll);
                 return;
             }
-            const roll = validRolls[0];
-            this.movePieceWithRoll(c, idx, roll);
-            return;
         }
 
         if (!this.hasRolled && this.currentRolls.length === 0) {
@@ -2586,6 +3088,410 @@ class LudoGame {
         this.endTurn();
     }
 
+    analyzeGameState() {
+        const state = {
+            turnCount: this.calculateTurnCount(),
+            myProgress: {},
+            enemyProgress: {},
+            threats: {},
+            opportunities: {},
+            gamePhase: 'early' // early, mid, late
+        };
+
+        // Analyze each player's progress
+        this.colors.forEach(color => {
+            const pieces = this.pieces[color];
+            let totalProgress = 0;
+            let piecesAtHome = 0;
+            let piecesInGoal = 0;
+            let piecesOnMainTrack = 0;
+            let avgPosition = 0;
+
+            pieces.forEach(piece => {
+                if (piece.inHome) {
+                    piecesAtHome++;
+                } else if (piece.inGoal) {
+                    piecesInGoal++;
+                    totalProgress += 56; // Max progress for goal
+                } else if (piece.position >= 0) {
+                    piecesOnMainTrack++;
+                    totalProgress += piece.position;
+                    avgPosition += piece.position;
+                }
+            });
+
+            avgPosition = piecesOnMainTrack > 0 ? avgPosition / piecesOnMainTrack : 0;
+
+            state[color === this.myColor ? 'myProgress' : 'enemyProgress'][color] = {
+                totalProgress,
+                piecesAtHome,
+                piecesInGoal,
+                piecesOnMainTrack,
+                avgPosition,
+                winningProbability: this.calculateWinningProbability(color, totalProgress, piecesInGoal)
+            };
+        });
+
+        // Determine game phase
+        const myTotalProgress = state.myProgress[this.myColor]?.totalProgress || 0;
+        if (myTotalProgress < 100) state.gamePhase = 'early';
+        else if (myTotalProgress < 200) state.gamePhase = 'mid';
+        else state.gamePhase = 'late';
+
+        // Analyze threats and opportunities
+        state.threats = this.findThreats();
+        state.opportunities = this.findOpportunities();
+
+        return state;
+    }
+
+    calculateWinningProbability(color, totalProgress, piecesInGoal) {
+        // Simple heuristic based on progress and pieces in goal
+        const progressScore = totalProgress / (4 * 56); // Normalized progress
+        const goalScore = piecesInGoal / 4; // Pieces in goal
+        return (progressScore * 0.7 + goalScore * 0.3);
+    }
+
+    findThreats() {
+        const threats = {};
+        const myColor = this.myColor;
+        const myPieces = this.pieces[myColor];
+
+        this.colors.forEach(enemyColor => {
+            if (enemyColor === myColor) return;
+            
+            const enemyPieces = this.pieces[enemyColor];
+            threats[enemyColor] = [];
+
+            enemyPieces.forEach((enemyPiece, enemyIndex) => {
+                if (enemyPiece.inHome || enemyPiece.inGoal) return;
+
+                // Check if enemy can capture my pieces
+                myPieces.forEach((myPiece, myIndex) => {
+                    if (myPiece.inHome || myPiece.inGoal) return;
+
+                    for (let roll = 1; roll <= 6; roll++) {
+                        if (this.canPieceMoveTo(enemyPiece, enemyColor, myPiece.position, roll)) {
+                            threats[enemyColor].push({
+                                enemyPiece: enemyIndex,
+                                targetPiece: myIndex,
+                                roll: roll,
+                                priority: this.calculateThreatPriority(myPiece, enemyPiece)
+                            });
+                        }
+                    }
+                });
+            });
+        });
+
+        return threats;
+    }
+
+    findOpportunities() {
+        const opportunities = {};
+        const myColor = this.myColor;
+        const myPieces = this.pieces[myColor];
+
+        this.colors.forEach(enemyColor => {
+            if (enemyColor === myColor) return;
+            
+            const enemyPieces = this.pieces[enemyColor];
+            opportunities[enemyColor] = [];
+
+            myPieces.forEach((myPiece, myIndex) => {
+                if (myPiece.inHome || myPiece.inGoal) return;
+
+                // Check if I can capture enemy pieces
+                enemyPieces.forEach((enemyPiece, enemyIndex) => {
+                    if (enemyPiece.inHome || enemyPiece.inGoal) return;
+
+                    for (let roll = 1; roll <= 6; roll++) {
+                        if (this.canPieceUseRoll(myPiece, myColor, roll) && 
+                            this.canPieceMoveTo(myPiece, myColor, enemyPiece.position, roll)) {
+                            opportunities[enemyColor].push({
+                                myPiece: myIndex,
+                                targetPiece: enemyIndex,
+                                roll: roll,
+                                priority: this.calculateOpportunityPriority(enemyPiece)
+                            });
+                        }
+                    }
+                });
+            });
+        });
+
+        return opportunities;
+    }
+
+    calculateThreatPriority(myPiece, enemyPiece) {
+        let priority = 10; // Base priority
+
+        // Higher priority if my piece is advanced
+        if (myPiece.position > 40) priority += 15;
+        else if (myPiece.position > 25) priority += 10;
+
+        // Higher priority if my piece is in home column
+        if (myPiece.position >= 51) priority += 20;
+
+        return priority;
+    }
+
+    calculateOpportunityPriority(enemyPiece) {
+        let priority = 10; // Base priority
+
+        // Higher priority if enemy piece is advanced
+        if (enemyPiece.position > 40) priority += 20;
+        else if (enemyPiece.position > 25) priority += 15;
+
+        // Higher priority if enemy piece is in home column
+        if (enemyPiece.position >= 51) priority += 25;
+
+        return priority;
+    }
+
+    findBestStrategicMove(color, gameState) {
+        let bestMove = null;
+        let bestScore = -Infinity;
+
+        for (const idx of this.movablePieces) {
+            const piece = this.pieces[color][idx];
+            const validRolls = this.getValidRollsForPiece(piece, color);
+            
+            for (const roll of validRolls) {
+                let score = this.evaluateMove(piece, idx, roll, color, gameState);
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = { pieceIndex: idx, roll, score };
+                }
+            }
+        }
+
+        return bestMove;
+    }
+
+    evaluateMove(piece, pieceIndex, roll, color, gameState) {
+        let score = 0;
+        const newPosition = this.calculateNewPosition(piece, color, roll);
+        
+        // Base score from roll value
+        score += roll * 2;
+
+        // Game phase specific strategies
+        if (gameState.gamePhase === 'early') {
+            // Early game: prioritize getting pieces out
+            if (piece.inHome && roll === 6) score += 50;
+            // Avoid risky advances early
+            if (newPosition > 20 && !this.isPositionSafe(newPosition, color)) score -= 20;
+        } else if (gameState.gamePhase === 'mid') {
+            // Mid game: balance advancement and safety
+            if (piece.inHome && roll === 6) score += 30;
+            if (newPosition > 30) score += 15;
+            if (this.isPositionSafe(newPosition, color)) score += 10;
+        } else {
+            // Late game: aggressive advancement to goal
+            if (newPosition >= 56) score += 100; // Reaching goal
+            else if (newPosition >= 51) score += 40; // Home column
+            else if (newPosition > 40) score += 25;
+        }
+
+        // Capture opportunities
+        const captureOpportunity = this.findCaptureOpportunity(piece, roll, color);
+        if (captureOpportunity) {
+            score += 30 + captureOpportunity.priority;
+        }
+
+        // Threat avoidance
+        const threatLevel = this.calculateThreatLevel(newPosition, color);
+        score -= threatLevel * 15;
+
+        // Safe position bonus
+        if (this.isPositionSafe(newPosition, color)) {
+            score += gameState.gamePhase === 'late' ? 5 : 15;
+        }
+
+        // Block enemy home column entry
+        if (this.blocksEnemyHomeEntry(newPosition, color)) {
+            score += 20;
+        }
+
+        // Form safe stacks (multiple pieces on same spot)
+        if (this.canFormSafeStack(newPosition, color)) {
+            score += 12;
+        }
+
+        // Winning urgency - if someone is close to winning
+        const winningUrgency = this.calculateWinningUrgency(gameState);
+        if (winningUrgency > 0.7) {
+            // Play more aggressively when someone is about to win
+            if (newPosition > 45) score += 30;
+            if (captureOpportunity) score += 20;
+        }
+
+        return score;
+    }
+
+    calculateNewPosition(piece, color, roll) {
+        if (piece.inHome) {
+            return roll === 6 ? 0 : -1; // Can only leave home with 6
+        }
+        
+        let newPos = piece.position + roll;
+        
+        // Check if entering home column
+        const homeEntryPos = this.getHomeEntryPosition(color);
+        if (piece.position < homeEntryPos && newPos >= homeEntryPos) {
+            // Calculate position in home column
+            const overshoot = newPos - homeEntryPos;
+            if (overshoot <= 5) {
+                return 51 + overshoot; // Home column positions 51-55
+            }
+        }
+        
+        // Check if reaching goal
+        if (newPos >= 56) return 56; // Goal
+        
+        return newPos;
+    }
+
+    findCaptureOpportunity(piece, roll, color) {
+        const newPosition = this.calculateNewPosition(piece, color, roll);
+        if (newPosition < 0 || newPosition >= 56) return null;
+
+        // Check if any enemy piece is at this position
+        for (const enemyColor of this.colors) {
+            if (enemyColor === color) continue;
+            
+            const enemyPieces = this.pieces[enemyColor];
+            for (let i = 0; i < enemyPieces.length; i++) {
+                const enemyPiece = enemyPieces[i];
+                if (enemyPiece.position === newPosition && !enemyPiece.inHome && !enemyPiece.inGoal) {
+                    return { enemyColor, pieceIndex: i, priority: this.calculateOpportunityPriority(enemyPiece) };
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    calculateThreatLevel(position, color) {
+        if (position < 0 || position >= 56) return 0;
+        
+        let threatLevel = 0;
+        
+        // Check how many enemy pieces can reach this position
+        for (const enemyColor of this.colors) {
+            if (enemyColor === color) continue;
+            
+            const enemyPieces = this.pieces[enemyColor];
+            enemyPieces.forEach(enemyPiece => {
+                if (enemyPiece.inHome || enemyPiece.inGoal) return;
+                
+                // Check if enemy can reach this position within 6 moves
+                const distance = this.calculateDistance(enemyPiece.position, position, enemyColor);
+                if (distance <= 6) {
+                    threatLevel += (7 - distance); // Higher threat for closer enemies
+                }
+            });
+        }
+        
+        return Math.min(threatLevel, 10); // Cap at 10
+    }
+
+    isPositionSafe(position, color) {
+        // A position is safe if it's a star spot or if we have multiple pieces there
+        const starSpots = [0, 8, 13, 21, 26, 34, 39, 47]; // Safe star positions
+        if (starSpots.includes(position)) return true;
+        
+        // Check if we already have pieces at this position
+        for (let i = 0; i < this.pieces[color].length; i++) {
+            const piece = this.pieces[color][i];
+            if (piece.position === position && !piece.inHome && !piece.inGoal) {
+                return true; // Safe stack
+            }
+        }
+        
+        return false;
+    }
+
+    blocksEnemyHomeEntry(position, color) {
+        // Check if this position blocks an enemy's home entry
+        const enemyHomeEntries = {
+            red: 13,
+            green: 26,
+            yellow: 39,
+            blue: 0
+        };
+        
+        for (const [enemyColor, entryPos] of Object.entries(enemyHomeEntries)) {
+            if (enemyColor === color) continue;
+            if (position === entryPos) return true;
+        }
+        
+        return false;
+    }
+
+    canFormSafeStack(newPosition, color) {
+        // Check if we can form a stack of 2+ pieces at this position
+        let piecesAtPosition = 0;
+        for (const piece of this.pieces[color]) {
+            if (piece.position === newPosition && !piece.inHome && !piece.inGoal) {
+                piecesAtPosition++;
+            }
+        }
+        return piecesAtPosition >= 1;
+    }
+
+    calculateWinningUrgency(gameState) {
+        let maxProgress = 0;
+        
+        // Find the player with highest progress
+        for (const [color, progress] of Object.entries(gameState.enemyProgress)) {
+            maxProgress = Math.max(maxProgress, progress.totalProgress);
+        }
+        
+        for (const [color, progress] of Object.entries(gameState.myProgress)) {
+            maxProgress = Math.max(maxProgress, progress.totalProgress);
+        }
+        
+        // High urgency if someone has >200 progress (close to winning)
+        return Math.min(maxProgress / 224, 1.0); // Normalize to 0-1
+    }
+
+    calculateDistance(fromPos, toPos, color) {
+        // Calculate distance along the path for a specific color
+        const path = this.paths[color];
+        const fromIndex = path.findIndex(p => p.x === this.getCoordinatesFromPosition(fromPos, color).x && 
+                                              p.y === this.getCoordinatesFromPosition(fromPos, color).y);
+        const toIndex = path.findIndex(p => p.x === this.getCoordinatesFromPosition(toPos, color).x && 
+                                            p.y === this.getCoordinatesFromPosition(toPos, color).y);
+        
+        if (fromIndex === -1 || toIndex === -1) return Infinity;
+        
+        return (toIndex - fromIndex + path.length) % path.length;
+    }
+
+    getCoordinatesFromPosition(position, color) {
+        if (position < 0 || position >= 56) return { x: -1, y: -1 };
+        return this.paths[color][position] || { x: -1, y: -1 };
+    }
+
+    getHomeEntryPosition(color) {
+        const entries = { red: 13, green: 26, yellow: 39, blue: 0 };
+        return entries[color];
+    }
+
+    calculateTurnCount() {
+        // Simple estimation of turn count based on game state
+        let totalMoves = 0;
+        this.colors.forEach(color => {
+            this.pieces[color].forEach(piece => {
+                if (!piece.inHome) totalMoves++;
+            });
+        });
+        return totalMoves;
+    }
+
     /**
      * stopTurnTimer - Stop the turn timer
      */
@@ -2593,6 +3499,12 @@ class LudoGame {
         if (this.turnTimer) {
             clearInterval(this.turnTimer);
             this.turnTimer = null;
+        }
+        const currentColor = this.players[this.currentPlayerIndex]?.color;
+        if (currentColor) {
+            const { timerId } = this.getUiIdsForColor(currentColor);
+            const timerElement = document.getElementById(timerId);
+            if (timerElement) timerElement.classList.remove('active');
         }
     }
 

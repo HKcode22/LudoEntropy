@@ -10,7 +10,7 @@ body {
         radial-gradient(circle at 20% 20%, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 4px, transparent 4px),
         radial-gradient(circle at 70% 40%, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.04) 4px, transparent 4px),
         linear-gradient(180deg, #4b234c 0%, #34183b 100%);
-    background-size: 48px 48px, 64px 64px, auto;
+    background-size: 100px 100px, 130px 130px, auto;
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -361,13 +361,13 @@ body {
     align-items: center;
     width: 100%;
     height: 100vh;
-    padding: 16px;
+    padding: 10px;
 }
 
 .game-layout {
     position: relative;
-    width: min(420px, 96vw);
-    min-height: min(860px, 96vh);
+    width: min(9000px, 136vw);
+    min-height: min(9000px, 126vh);
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: 72px 84px auto 114px;
@@ -378,10 +378,10 @@ body {
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 9000px) {
     .game-layout {
-        width: min(750px, 90vw);
-        height: min(750px, 85vh);
+        width: min(5050px, 250vw);
+        height: min(5050px, 250vh);
         grid-template-columns: 120px 1fr 120px;
         grid-template-rows: 120px 1fr 120px;
     }
@@ -410,13 +410,13 @@ body {
     align-items: center;
     background: linear-gradient(180deg, #925230 0%, #6f3b22 100%);
     border-radius: 18px;
-    padding: 8px;
+    padding: 1px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36), inset 0 2px 0 rgba(255,255,255,0.15);
     transform-style: preserve-3d;
 }
 
 .board-wrapper.board-pov-tilt {
-    perspective: 1200px;
+    perspective: 5000px;
 }
 
 .board-wrapper.board-pov-tilt #gameCanvas {
@@ -429,9 +429,9 @@ body {
 
 #gameCanvas {
     background: white;
-    border-radius: 10px;
-    width: min(350px, 84vw);
-    height: min(350px, 84vw);
+    border-radius: 15px;
+    width: min(1100px, 70vw);
+    height: min(1100px, 70vh);
     box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.08);
 }
 
@@ -443,27 +443,6 @@ body {
     color: white;
 }
 
-.player-top-left {
-    grid-column: 1;
-    grid-row: 1;
-    align-items: center;
-    justify-content: flex-end;
-}
-
-.player-top-right {
-    display: none;
-}
-
-.player-bottom-left {
-    grid-column: 1;
-    grid-row: 4;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.player-bottom-right {
-    display: none;
-}
 
 .player-avatar-container {
     position: relative;
@@ -474,15 +453,15 @@ body {
 }
 
 .player-avatar {
-    width: 56px;
-    height: 56px;
+    width: 85px;
+    height: 85px;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
-    border: 3px solid rgba(255,255,255,0.9);
+    border: 4px solid rgba(255,255,255,0.9);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    font-size: 24px;
+    font-size: 32px;
     position: relative;
 }
 
@@ -512,11 +491,14 @@ body {
 }
 
 .player-name {
-    color: white;
-    font-size: 15px;
+    font-size: 22px !important;
     font-weight: 600;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    color: white !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
     text-align: left;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .player-rolls {
@@ -585,40 +567,20 @@ body {
     border: none;
     width: 46px;
     height: 46px;
-    background: linear-gradient(180deg, #5E6F6F 0%, #445455 100%);
+    /* background: linear-gradient(180deg, #5E6F6F 0%, #445455 100%); */
     border-radius: 12px;
     display: flex;
-    justify-content: center;
+    /* justify-content: center; */
     align-items: center;
-    border: 2px solid rgba(255,255,255,0.24);
-    box-shadow:
-        inset 0 2px 0 rgba(255,255,255,0.36),
-        inset 0 -6px 10px rgba(0,0,0,0.24),
-        0 6px 14px rgba(0, 0, 0, 0.35);
+    /* box-shadow: none; */
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
 }
 
-.player-dice::before {
-    content: "";
-    position: absolute;
-    inset: 2px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.05));
-    pointer-events: none;
-    mix-blend-mode: screen;
-    opacity: 0.75;
-}
-
+.player-dice::before,
 .player-dice::after {
-    content: "";
-    position: absolute;
-    inset: -6px -6px 10px -6px;
-    border-radius: 14px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
-    pointer-events: none;
-    opacity: 0.35;
+    display: none;
 }
 
 .player-dice:hover {
@@ -630,21 +592,27 @@ body {
 }
 
 .dice-dots-small {
-    width: 100%;
-    height: 100%;
-    display: grid;
+    width: 100% !important;
+    height: 100% !important;
+    display: grid !important;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
-    padding: 5px;
+    padding: 8px !important;
     gap: 2px;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .dot-small {
-    width: 7px;
-    height: 7px;
-    background: #F4F7FA;
+    width: 14px !important;
+    height: 14px !important;
+    background: #F4F7FA !important;
     border-radius: 50%;
     margin: auto;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-shadow: 0 0 3px rgba(0,0,0,0.8);
 }
 
 #diceBlue { background: linear-gradient(180deg, #4A6CC8 0%, #36539C 100%); }
@@ -654,15 +622,15 @@ body {
 
 .exit-game-btn-new {
     position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 34px;
-    height: 34px;
+    top: 15px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
     background: rgba(255, 71, 87, 0.85);
     color: white;
     border: none;
     border-radius: 50%;
-    font-size: 24px;
+    font-size: 18px;
     font-weight: bold;
     cursor: pointer;
     display: flex;
@@ -670,7 +638,7 @@ body {
     align-items: center;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     transition: all 0.2s ease;
-    z-index: 100;
+    z-index: 1000;
 }
 
 .exit-game-btn-new:hover {
@@ -827,23 +795,32 @@ body {
     cursor: not-allowed;
 }
 
-/* Mobile-style Ludo Stars inspired layout */
+/* Hide Quick Play button */
+#quickPlayBtn {
+    display: block;
+}
+
+/* Make the shell the reference for absolute positioning */
 .mobile-ludo-shell {
-    width: 400px;
-    min-height: 820px;
-    grid-template-columns: 1fr;
-    grid-template-rows: 54px auto 1fr auto;
-    gap: 8px;
-    padding: 8px;
+    position: relative;
+    width: min(1000px, 95vw);
+    height: min(1000px, 85vh);
+    margin: 0 auto;
+    background: rgba(77, 26, 74, 0.76);
     border-radius: 28px;
-    background: rgba(90, 33, 84, 0.78);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
 }
 
 .top-hud {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 2px 4px;
+    padding: 10px 15px;
+    height: 60px;
 }
 
 .hud-actions {
@@ -863,9 +840,9 @@ body {
 }
 
 .hud-icon-btn {
-    width: 34px;
-    height: 34px;
-    font-size: 14px;
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
     font-weight: 700;
 }
 
@@ -881,28 +858,50 @@ body {
     font-size: 14px;
 }
 
+/* Base player panel style */
+.player-info {
+    position: absolute;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 100 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* Positioning classes */
+.player-top-left    { top: 30px; left: 30px; }
+.player-top-right   { top: 30px; right: 30px; }
+.player-bottom-left { bottom: 30px; left: 30px; }
+.player-bottom-right{ bottom: 30px; right: 30px; }
+
+/* Tournament badge */
+.tournament-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: gold;
+    color: #2c3e66;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    z-index: 200;
+}
+
+/* Legacy support for old players-frame class - DISABLED */
 .players-frame {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    gap: 8px 10px;
-    padding: 0 4px;
-    align-items: start;
+    display: none !important;
 }
 
 /* Override legacy layout rules that hide top-right/bottom-right slots.
    The game uses `players-frame` for all 4 player panels. */
-.players-frame .player-top-right,
-.players-frame .player-bottom-right,
-.players-frame .player-top-left,
-.players-frame .player-bottom-left {
-    display: flex !important;
-}
-
-.players-frame .player-top-left { grid-column: 1 !important; grid-row: 1 !important; }
-.players-frame .player-top-right { grid-column: 2 !important; grid-row: 1 !important; }
-.players-frame .player-bottom-left { grid-column: 1 !important; grid-row: 2 !important; }
-.players-frame .player-bottom-right { grid-column: 2 !important; grid-row: 2 !important; }
+/* REMOVED - These were conflicting with .player-info positioning */
 
 .player-corner {
     display: flex;
@@ -918,32 +917,20 @@ body {
     height: 48px;
 }
 
-.player-top-left {
-    justify-self: start;
-}
-
-.player-top-right {
-    justify-self: end;
-}
-
-.player-bottom-left {
-    justify-self: start;
-}
-
-.player-bottom-right {
-    justify-self: end;
-}
-
 .board-wrapper {
-    grid-row: 3;
-    justify-self: center;
-    width: 356px;
-    height: 356px;
-    padding: 8px;
-    border-radius: 16px;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     background: linear-gradient(180deg, #93542f 0%, #6e3c24 100%);
+    border-radius: 16px;
+    padding: 8px;
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4), inset 0 2px 0 rgba(255,255,255,0.16);
+    margin: 8px 0;
     transform-style: preserve-3d;
+    position: relative;
 }
 
 .board-wrapper.board-pov-tilt {
@@ -959,8 +946,10 @@ body {
 }
 
 #gameCanvas {
-    width: 340px;
-    height: 340px;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100%;
+    max-height: 100%;
     display: block;
     border-radius: 10px;
     object-fit: contain;
@@ -994,9 +983,127 @@ body {
     padding: 8px 10px;
 }
 
+/* Current player dice indicator with pulsing glow */
+.player-dice.current-player-dice {
+    animation: currentPlayerPulse 1.5s ease-in-out infinite;
+    border-color: #FFD700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), inset 0 2px 0 rgba(255,255,255,0.36);
+}
+
+@keyframes currentPlayerPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5), inset 0 2px 0 rgba(255,255,255,0.36);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.8), inset 0 2px 0 rgba(255,255,255,0.36);
+    }
+}
+
+/* Turn indicator banner - HIDDEN */
+.turn-indicator {
+    display: none !important;
+}
+
+/* Enhanced dice rolling animation with 360 rotation */
+.player-dice.rolling {
+    animation: diceRoll 0.6s ease-in-out !important;
+}
+
+@keyframes diceRoll {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    25% {
+        transform: rotate(90deg) scale(1.1);
+    }
+    50% {
+        transform: rotate(180deg) scale(1.05);
+    }
+    75% {
+        transform: rotate(270deg) scale(1.1);
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
+}
+
+/* Ensure dice is always clickable when it's the player's turn */
+.player-dice {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* Color-specific dice glow effects */
+#diceBlue.current-player-dice {
+    box-shadow: 0 0 20px rgba(37, 135, 217, 0.8), inset 0 2px 0 rgba(255,255,255,0.36);
+    border-color: #2587D9;
+}
+
+#diceRed.current-player-dice {
+    box-shadow: 0 0 20px rgba(231, 74, 63, 0.8), inset 0 2px 0 rgba(255,255,255,0.36);
+    border-color: #E74A3F;
+}
+
+#diceGreen.current-player-dice {
+    box-shadow: 0 0 20px rgba(31, 184, 92, 0.8), inset 0 2px 0 rgba(255,255,255,0.36);
+    border-color: #1FB85C;
+}
+
+#diceYellow.current-player-dice {
+    box-shadow: 0 0 20px rgba(228, 187, 28, 0.8), inset 0 2px 0 rgba(255,255,255,0.36);
+    border-color: #E4BB1C;
+}
+
+/* Enhanced player info panel for current player */
+.player-info.current-turn {
+    border-color: #FFD700;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.5);
+    animation: playerPanelPulse 2s ease-in-out infinite;
+}
+
+@keyframes playerPanelPulse {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+    }
+}
+.player-dice[data-color="red"]::before,
+[data-color="red"] .player-dice::before {
+    background: linear-gradient(135deg, #ff6b6b, #c92a2a);
+}
+
+.player-dice[data-color="blue"]::before,
+[data-color="blue"] .player-dice::before {
+    background: linear-gradient(135deg, #74c0fc, #1864ab);
+}
+
+.player-dice[data-color="green"]::before,
+[data-color="green"] .player-dice::before {
+    background: linear-gradient(135deg, #51cf66, #2b8a3e);
+}
+
+.player-dice[data-color="yellow"]::before,
+[data-color="yellow"] .player-dice::before {
+    background: linear-gradient(135deg, #ffd43b, #fab005);
+}
+
+/* Dice dots should be white/visible on all colors */
+.dice-dots-small,
+.dice-dots {
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
 .player-dice-small {
-    width: 36px;
-    height: 36px;
+    width: 70px !important;
+    height: 70px !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .player-rolls {

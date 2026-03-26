@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Position Test</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial; }
+        .container {
+            width: 400px;
+            height: 600px;
+            background: #f0f0f0;
+            position: relative;
+            margin: 0 auto;
+        }
+        .top-frame {
+            position: relative;
+            width: 100%;
+            height: 80px;
+            background: #ddd;
+        }
+        .board {
+            width: 100%;
+            height: 400px;
+            background: #fff;
+            border: 2px solid #333;
+        }
+        .bottom-frame {
+            position: relative;
+            width: 100%;
+            height: 80px;
+            background: #ddd;
+        }
+        .player {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .blue { background: blue; top: 10px; left: 10px; }
+        .red { background: red; top: 10px; right: 10px; }
+        .yellow { background: orange; bottom: 10px; left: 10px; }
+        .green { background: green; bottom: 10px; right: 10px; }
+    </style>
+</head>
+<body>
+    <h2 style="text-align: center;">If this works, the layout concept is correct</h2>
+    <div class="container">
+        <div class="top-frame">
+            <div class="player blue">B</div>
+            <div class="player red">R</div>
+        </div>
+        <div class="board">
+            <p style="text-align: center; padding-top: 150px;">BOARD</p>
+        </div>
+        <div class="bottom-frame">
+            <div class="player yellow">Y</div>
+            <div class="player green">G</div>
+        </div>
+    </div>
+    <p style="text-align: center;">Blue/Red at top, Yellow/Green at bottom</p>
+</body>
+</html>

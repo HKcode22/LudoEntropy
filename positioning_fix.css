@@ -1,0 +1,329 @@
+/* COMPREHENSIVE LUDO POSITIONING FIX - DESKTOP OPTIMIZED */
+/* This fixes player name and dice visibility for desktop */
+
+/* 1. Mobile shell container - use flex layout for better control */
+.mobile-ludo-shell {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    width: min(900px, 95vw) !important;
+    height: min(900px, 85vh) !important;
+    padding: 15px !important;
+    min-height: unset !important;
+    background: transparent !important;
+    border-radius: 28px !important;
+}
+
+/* 2. Force each element into correct position */
+.mobile-ludo-shell .top-hud {
+    position: relative !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    height: 50px !important;
+    padding: 10px 15px !important;
+}
+
+.mobile-ludo-shell .board-wrapper {
+    position: relative !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: min(520px, 65vw) !important;
+    height: min(520px, 65vw) !important;
+    margin: 10px auto !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+}
+
+.mobile-ludo-shell .bottom-shortcuts {
+    position: relative !important;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 15px !important;
+    height: 50px !important;
+    padding: 10px !important;
+}
+
+/* 3. ALL Player panels - ALWAYS visible, positioned absolutely within shell */
+.player-info {
+    position: absolute !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    z-index: 100 !important;
+    background: transparent !important;
+    border-radius: 20px !important;
+    padding: 8px 12px !important;
+    border: none !important;
+    min-width: 120px !important;
+    box-shadow: none !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+}
+
+/* Position each player panel near their color corner on the board */
+/* These match the actual board layout from drawHomeAreas():
+   Blue: top-left (0,0), Red: top-right (9,0), Yellow: bottom-left (0,9), Green: bottom-right (9,9) */
+.player-info[data-color="blue"] {
+    top: 55px !important;
+    left: 10px !important;
+    right: auto !important;
+    bottom: auto !important;
+}
+
+.player-info[data-color="red"] {
+    top: 55px !important;
+    right: 10px !important;
+    left: auto !important;
+    bottom: auto !important;
+}
+
+.player-info[data-color="yellow"] {
+    bottom: 55px !important;
+    left: 10px !important;
+    top: auto !important;
+    right: auto !important;
+}
+
+.player-info[data-color="green"] {
+    bottom: 55px !important;
+    right: 10px !important;
+    top: auto !important;
+    left: auto !important;
+}
+
+/* Fallback positioning classes - will be set by JavaScript based on POV */
+/* These MUST override the data-color positions when POV rotation is applied */
+/* Using higher specificity with body prefix and !important */
+body .player-info.player-top-left {
+    top: 55px !important;
+    left: 10px !important;
+    right: auto !important;
+    bottom: auto !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+body .player-info.player-top-right {
+    top: 55px !important;
+    right: 10px !important;
+    left: auto !important;
+    bottom: auto !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+body .player-info.player-bottom-left {
+    bottom: 55px !important;
+    left: 10px !important;
+    top: auto !important;
+    right: auto !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+body .player-info.player-bottom-right {
+    bottom: 55px !important;
+    right: 10px !important;
+    top: auto !important;
+    left: auto !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* 4. Player name - ensure visibility */
+.player-info .player-name {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    color: white !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9) !important;
+    text-align: center !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    line-height: 1.2 !important;
+}
+
+/* 5. Player avatar container - flex layout for avatar + dice side by side */
+.player-info .player-avatar-container {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 15px !important;
+    width: 100% !important;
+}
+
+/* 6. Player avatar */
+.player-info .player-avatar {
+    width: 45px !important;
+    height: 45px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    border: 3px solid rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+    font-size: 22px !important;
+    position: relative !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+}
+
+/* 7. Dice button - smaller and more reasonable */
+.player-info .player-dice {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    border: none !important;
+    width: 42px !important;
+    height: 42px !important;
+    background: linear-gradient(180deg, #5E6F6F 0%, #445455 100%) !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), inset 0 -5px 8px rgba(0, 0, 0, 0.3), 0 5px 15px rgba(0, 0, 0, 0.4) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    position: relative !important;
+    pointer-events: auto !important;
+    z-index: 20 !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+}
+
+.player-info .player-dice:hover {
+    transform: scale(1.15) !important;
+    box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.4), inset 0 -8px 12px rgba(0, 0, 0, 0.3), 0 12px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.player-info .player-dice:active {
+    transform: scale(0.95) !important;
+}
+
+/* 8. Dice dots - larger and more visible */
+.player-info .dice-dots-small {
+    width: 100% !important;
+    height: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: repeat(3, 1fr) !important;
+    padding: 6px !important;
+    gap: 3px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+.player-info .dot-small {
+    width: 10px !important;
+    height: 10px !important;
+    background: #F4F7FA !important;
+    border-radius: 50% !important;
+    margin: auto !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Empty dot (invisible) */
+.player-info .dot-small:not([style*="background"]) {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* 9. Player rolls display */
+.player-info .player-rolls {
+    display: flex !important;
+    gap: 6px !important;
+    margin-top: 6px !important;
+    min-height: 28px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+}
+
+.player-info .roll-badge {
+    background: white !important;
+    color: #333 !important;
+    padding: 5px 12px !important;
+    border-radius: 14px !important;
+    font-weight: 800 !important;
+    font-size: 14px !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 10. Timer overlay */
+.player-info .timer-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 50% !important;
+    background: rgba(100, 100, 100, 0.8) !important;
+    display: none !important;
+    justify-content: center !important;
+    align-items: center !important;
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    color: white !important;
+    z-index: 10 !important;
+}
+
+.player-info .timer-overlay.active {
+    display: flex !important;
+}
+
+/* 11. Active player highlight */
+.player-info .player-avatar.active {
+    border-color: #FFD700 !important;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.8) !important;
+    animation: pulse-gold 1.5s ease-in-out infinite !important;
+}
+
+@keyframes pulse-gold {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.7); }
+    50% { box-shadow: 0 0 35px rgba(255, 215, 0, 1); }
+}
+
+/* 12. Color-specific dice backgrounds */
+#diceBlue { 
+    background: linear-gradient(180deg, #4A6CC8 0%, #36539C 100%) !important;
+    display: flex !important;
+}
+#diceRed { 
+    background: linear-gradient(180deg, #D45A50 0%, #B04036 100%) !important;
+    display: flex !important;
+}
+#diceGreen { 
+    background: linear-gradient(180deg, #2EA45F 0%, #1F7A45 100%) !important;
+    display: flex !important;
+}
+#diceYellow { 
+    background: linear-gradient(180deg, #C6A23B 0%, #9E812C 100%) !important;
+    display: flex !important;
+}
+
+/* 13. Avatar icons */
+.player-info .avatar-icon {
+    display: block !important;
+    font-size: 32px !important;
+    line-height: 1 !important;
+}
