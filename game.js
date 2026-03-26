@@ -825,18 +825,16 @@ class LudoGame {
     handleDiceRolled(data) {
         // Update dice display for the rolling player
         const { playerColor, diceValue } = data;
-        const diceElement = document.getElementById(`dice${playerColor.charAt(0).toUpperCase() + playerColor.slice(1)}`);
-        if (diceElement) {
-            diceElement.textContent = diceValue;
-            diceElement.classList.add('dice-rolled');
-            setTimeout(() => diceElement.classList.remove('dice-rolled'), 500);
-        }
         
-        // Update turn if it's a multiplayer game
-        if (this.roomCode) {
-            const playerIndex = this.players.findIndex(p => p.color === playerColor);
-            this.currentPlayerIndex = (playerIndex + 1) % this.players.length;
-        }
+        // Update internal dice value
+        this.playerDice[playerColor] = diceValue;
+        this.diceValue = diceValue;
+        
+        // Update the dice UI
+        this.updateDiceDisplay(diceValue, playerColor);
+        
+        // Do NOT advance turn here - the server will send turnChanged message
+        console.log(`[WebSocket] ${playerColor} rolled ${diceValue}`);
     }
 
     handlePieceMoved(data) {
@@ -2551,41 +2549,53 @@ class LudoGame {
 
     /**
      * rollDice - Roll the dice for specified player
-     * 
+     *
      * Main dice rolling function:
      * 1. Check if player can roll
      * 2. Show rolling animation
      * 3. Get roll result (backend or local)
      * 4. Handle special cases (three 6s, bonus rolls)
      * 5. Enable piece movement
-     * 
+     *
      * @param {string} playerColor - Color of player rolling the dice (optional)
      */
     rollDice(playerColor = null) {
         // Prevent multiple simultaneous rolls
         if (this.isRolling) {
-            console.log('Already rolling, please wait...');
+            console.log('[Dice] Already rolling, please wait...');
             return;
         }
 
         // Use provided color or current player's color
         const targetColor = playerColor || this.players[this.currentPlayerIndex]?.color;
-        if (!targetColor) return;
-        
+        if (!targetColor) {
+            console.error('[Dice] No target color specified');
+            return;
+        }
+
         // Find the player index for the target color
         const playerIndex = this.players.findIndex(p => p.color === targetColor);
-        if (playerIndex === -1) return;
-        
+        if (playerIndex === -1) {
+            console.error('[Dice] Player not found for color:', targetColor);
+            return;
+        }
+
         // In debug mode, allow any dice to be rolled for testing
         // In normal mode, only allow rolling during the correct player's turn
         const isDebugMode = this.debugMode && this.debugMode.enabled;
         if (!isDebugMode && playerIndex !== this.currentPlayerIndex) {
-            console.log(`Not ${targetColor}'s turn yet. Current turn: ${this.players[this.currentPlayerIndex].color}`);
+            console.log(`[Dice] Not ${targetColor}'s turn yet. Current turn: ${this.players[this.currentPlayerIndex].color}`);
             return;
         }
-        
-        if (this.hasRolled) return;
-        if (this.currentRolls.length >= 3) return;
+
+        if (this.hasRolled) {
+            console.log('[Dice] Already rolled, please move a piece');
+            return;
+        }
+        if (this.currentRolls.length >= 3) {
+            console.log('[Dice] Maximum rolls reached');
+            return;
+        }
 
         // Set rolling flag to prevent multiple rolls
         this.isRolling = true;
@@ -2593,6 +2603,8 @@ class LudoGame {
         const { diceId } = this.getUiIdsForColor(targetColor);
         const dice = document.getElementById(diceId);
         if (dice) dice.classList.add('rolling');
+
+        console.log('[Dice] Rolling for', targetColor, '...');
 
         setTimeout(() => {
             (async () => {
@@ -2604,6 +2616,8 @@ class LudoGame {
                         console.log(`🎲 ${targetColor} rolled: ${this.diceValue} (Backend: ${this._lastRollFromBackend})`);
                         console.log(`   Entropy:`, this._lastDiceEntropyMetaForBackend);
                     }
+
+                    console.log('[Dice] Result:', this.diceValue);
 
                     this.updateDiceDisplay(this.diceValue, targetColor);
                     if (dice) dice.classList.remove('rolling');
@@ -2664,11 +2678,17 @@ class LudoGame {
                         this.canMove = true;
                         this.highlightMovablePieces(targetColor);
                     } else {
+                        console.log('[Dice] No pieces can move, ending turn');
                         setTimeout(() => {
                             this.endTurn();
                         }, 1000);
                     }
                     this.updateCurrentPlayerDisplay();
+                } catch (error) {
+                    console.error('[Dice] Roll failed:', error.message);
+                    alert('Dice roll failed: ' + error.message + '\n\nPlease make sure the backend server is running on port 5179.');
+                    this.isRolling = false;
+                    if (dice) dice.classList.remove('rolling');
                 } finally {
                     // Clear rolling flag
                     this.isRolling = false;
@@ -2931,44 +2951,50 @@ class LudoGame {
 
     /**
      * updateCurrentPlayerDisplay - Update UI for current player
-     * 
+     *
      * Highlights current player with avatar glow, shows timer, enables dice
      */
     updateCurrentPlayerDisplay() {
         if (!this.players[this.currentPlayerIndex]) return;
 
         const currentColor = this.players[this.currentPlayerIndex].color;
+        console.log(`[Turn] Current player: ${currentColor}`);
 
         ['red', 'green', 'yellow', 'blue'].forEach(color => {
-            const { avatarId, timerId, diceId } = this.getUiIdsForColor(color);
+            const { avatarId, timerId, diceId, nameId } = this.getUiIdsForColor(color);
             const avatar = document.getElementById(avatarId);
             const timerElement = document.getElementById(timerId);
             const diceElement = document.getElementById(diceId);
+            const nameElement = document.getElementById(nameId);
 
+            const isCurrentPlayer = color === currentColor;
+
+            // Avatar highlight
             if (avatar) {
-                if (color === currentColor) {
+                if (isCurrentPlayer) {
                     avatar.classList.add('active');
                 } else {
                     avatar.classList.remove('active');
                 }
             }
 
+            // Timer visibility
             if (timerElement) {
-                if (color === currentColor) {
+                if (isCurrentPlayer) {
                     timerElement.classList.add('active');
                 } else {
                     timerElement.classList.remove('active');
                 }
             }
 
+            // Dice button state
             if (diceElement) {
-                const isCurrentPlayer = color === currentColor;
-                const isMyTurn = color === this.myColor;
                 const canRollNow = !this.hasRolled && this.currentRolls.length === 0;
+                const isHumanTurn = isCurrentPlayer && color === this.myColor;
+                const clickable = isHumanTurn && canRollNow;
 
-                const clickable = isCurrentPlayer && canRollNow;
                 diceElement.style.cursor = clickable ? 'pointer' : 'default';
-                diceElement.style.opacity = isCurrentPlayer ? '1' : '0.7';
+                diceElement.style.opacity = isCurrentPlayer ? '1' : '0.6';
                 diceElement.style.pointerEvents = clickable ? 'auto' : 'none';
 
                 if (isCurrentPlayer && canRollNow) {
@@ -2977,8 +3003,20 @@ class LudoGame {
                     diceElement.classList.remove('current-player-dice');
                 }
             }
+
+            // Name highlight for current player
+            if (nameElement) {
+                if (isCurrentPlayer) {
+                    nameElement.style.fontWeight = '900';
+                    nameElement.style.textShadow = '0 0 10px #FFD700, 1px 1px 2px rgba(0,0,0,0.7)';
+                } else {
+                    nameElement.style.fontWeight = '600';
+                    nameElement.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)';
+                }
+            }
         });
 
+        // Canvas interaction
         if (this.canvas && this.gameState === 'playing') {
             this.canvas.style.pointerEvents = this.isHumanLocalTurn() ? 'auto' : 'none';
         }
@@ -2988,7 +3026,7 @@ class LudoGame {
 
     /**
      * startTurnTimer - Start the 30-second turn timer
-     * 
+     *
      * Counts down and auto-plays if time runs out
      */
     startTurnTimer() {
@@ -2999,31 +3037,46 @@ class LudoGame {
 
         const currentColor = this.players[this.currentPlayerIndex]?.color;
         if (!currentColor) return;
-        
+
         const { timerId } = this.getUiIdsForColor(currentColor);
         const timerElement = document.getElementById(timerId);
 
         this.turnStartAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
         this.turnTimeRemaining = 30;
 
+        // Update timer display immediately
         if (timerElement) {
             timerElement.classList.add('active');
-            timerElement.textContent = String(this.turnTimeRemaining);
+            timerElement.textContent = '30';
+            console.log(`[Timer] Started for ${currentColor}, element:`, timerElement);
         }
 
-        const tick = () => {
-            const el = document.getElementById(timerId);
-            if (el) el.textContent = String(this.turnTimeRemaining);
-        };
-        tick();
+        // Clear any existing timer display for other players
+        ['red', 'green', 'yellow', 'blue'].forEach(color => {
+            if (color !== currentColor) {
+                const otherTimer = document.getElementById(this.getUiIdsForColor(color).timerId);
+                if (otherTimer) {
+                    otherTimer.classList.remove('active');
+                    otherTimer.textContent = '30';
+                }
+            }
+        });
 
         this.turnTimer = setInterval(() => {
             this.turnTimeRemaining--;
-            tick();
+            
+            // Update timer display
+            const el = document.getElementById(timerId);
+            if (el) {
+                el.textContent = String(this.turnTimeRemaining);
+            }
+            
+            console.log(`[Timer] ${currentColor}: ${this.turnTimeRemaining}s`);
 
             if (this.turnTimeRemaining <= 0) {
                 clearInterval(this.turnTimer);
                 this.turnTimer = null;
+                console.log(`[Timer] Expired for ${currentColor}`);
                 // Only auto-play if it's the local player's turn
                 if (currentColor === this.myColor) {
                     this.onTurnTimerExpired();
