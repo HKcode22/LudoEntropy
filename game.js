@@ -2768,9 +2768,9 @@ class LudoGame {
 
     /**
      * updateDiceDisplay - Update the visual dice display
-     * 
+     *
      * Shows dots in standard dice pattern
-     * 
+     *
      * @param {number} value - Dice value (1-6)
      * @param {string} color - Player color (or null for all)
      */
@@ -2784,53 +2784,53 @@ class LudoGame {
             6: [0, 2, 3, 5, 6, 8]
         };
 
+        console.log(`[Dice UI] Updating ${color} dice to ${value}`);
+
         if (color) {
             const { diceId } = this.getUiIdsForColor(color);
             const diceEl = document.getElementById(diceId);
             const diceDots = document.querySelector(`#${diceId} .dice-dots-small`);
-            
-            if (diceDots) {
-                // Clear all dots completely
-                diceDots.innerHTML = '';
-                
-                // Create grid container for dots
-                diceDots.style.display = 'grid';
-                diceDots.style.gridTemplateColumns = 'repeat(3, 1fr)';
-                diceDots.style.gridTemplateRows = 'repeat(3, 1fr)';
-                diceDots.style.gap = '2px';
-                diceDots.style.padding = '8px';
-                
-                // Create exactly 9 cells
-                for (let i = 0; i < 9; i++) {
-                    const cell = document.createElement('div');
-                    cell.style.width = '10px';
-                    cell.style.height = '10px';
-                    cell.style.display = 'flex';
-                    cell.style.alignItems = 'center';
-                    cell.style.justifyContent = 'center';
-                    
-                    // Only show dots for valid positions
-                    if (dotPositions[value] && dotPositions[value].includes(i)) {
-                        const dot = document.createElement('div');
-                        dot.style.width = '6px';
-                        dot.style.height = '6px';
-                        dot.style.backgroundColor = '#F4F7FA';
-                        dot.style.borderRadius = '50%';
-                        dot.style.boxShadow = '0 1px 2px rgba(0,0,0,0.3)';
-                        cell.appendChild(dot);
-                    }
-                    
-                    diceDots.appendChild(cell);
+
+            if (!diceEl || !diceDots) {
+                console.error(`[Dice UI] Elements not found for ${color}: diceEl=${!!diceEl}, diceDots=${!!diceDots}`);
+                return;
+            }
+
+            // Store the value on the element
+            diceEl.dataset.value = String(value);
+
+            // Clear all dots completely
+            diceDots.innerHTML = '';
+
+            // Create exactly 9 cells in 3x3 grid
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.style.width = '14px';
+                cell.style.height = '14px';
+                cell.style.display = 'flex';
+                cell.style.alignItems = 'center';
+                cell.style.justifyContent = 'center';
+
+                // Only show dot for valid positions
+                if (dotPositions[value] && dotPositions[value].includes(i)) {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot-small';
+                    dot.style.width = '10px';
+                    dot.style.height = '10px';
+                    dot.style.backgroundColor = '#F4F7FA';
+                    dot.style.borderRadius = '50%';
+                    dot.style.boxShadow = '0 0 4px rgba(0,0,0,0.9)';
+                    dot.style.display = 'block';
+                    cell.appendChild(dot);
                 }
-                
-                this.playerDice[color] = value;
+
+                diceDots.appendChild(cell);
             }
-            
-            if (diceEl) {
-                diceEl.dataset.value = String(value);
-                diceEl.dataset.rollSource = this._lastRollFromBackend ? 'backend' : 'fallback';
-            }
+
+            this.playerDice[color] = value;
+            console.log(`[Dice UI] ${color} dice updated to ${value} successfully`);
         } else {
+            // Update all colors
             Object.keys(this.playerDice).forEach(c => {
                 this.updateDiceDisplay(this.playerDice[c], c);
             });
